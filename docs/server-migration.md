@@ -8,6 +8,17 @@ CHM is the official user-facing entry app, application switcher, loader, and IAP
 
 Explorer, currently developed in the Ryu repo, remains the graph application and is mounted under CHM at `/explorer`.
 
+## Current Status
+
+The first CHM slice was deployed on 2026-08-26.
+
+- Cloud Run service `chm` is deployed in `us-east4`.
+- Terraform state is stored in `gs://chm-network-tfstate-288836337031/chm`.
+- The HTTPS load balancer IP is `34.110.145.254`.
+- Dynadot DNS still needs an `A` record for `chm.oceanagentics.org` pointing to `34.110.145.254`.
+- The Google-managed certificate will remain provisioning until DNS points at the load balancer.
+- `/explorer` routing remains deferred until the Ryu backend is ready or CHM explicitly chooses a temporary placeholder.
+
 ## Target Routes
 
 Use one shared domain with path routing:

@@ -4,7 +4,7 @@
 
 Terraform should define and manage the shared CHM Google Cloud infrastructure for `chm.oceanagentics.org`.
 
-The initial executable Terraform skeleton lives in `infra/`. Do not apply it until the plan output has been reviewed.
+The initial executable Terraform stack lives in `infra/`. Review `terraform plan` before future applies.
 
 ## Definitions
 
@@ -41,6 +41,7 @@ The initial executable Terraform skeleton lives in `infra/`. Do not apply it unt
 - Domain: `chm.oceanagentics.org`.
 - Primary Cloud Run region: `us-east4`.
 - Terraform state bucket: `chm-network-tfstate-288836337031`.
+- Current load balancer IP: `34.110.145.254`.
 - Infrastructure path: Terraform.
 - Routing style: explicit URL map rules per app.
 - IAP access principal: `domain:oceanagentics.com`.
@@ -132,7 +133,7 @@ Terraform does not manage DNS for the first slice because DNS is managed in Dyna
 After Terraform creates the load balancer, use the `load_balancer_ip` output to create or update this Dynadot record:
 
 ```text
-chm.oceanagentics.org A <load_balancer_ip>
+chm.oceanagentics.org A 34.110.145.254
 ```
 
 ## Implementation Rules

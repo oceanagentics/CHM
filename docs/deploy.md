@@ -6,6 +6,26 @@ The first deployment publishes the minimal CHM app to Cloud Run behind the IAP-p
 
 Terraform manages the Artifact Registry repository, Cloud Run service, load balancer, certificate, URL map, and IAP access. DNS remains manual in Dynadot.
 
+## Current Deployment
+
+Applied on 2026-08-26:
+
+- Project: `chm-network`
+- Region: `us-east4`
+- Cloud Run service: `chm`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest`
+- Load balancer IP: `34.110.145.254`
+- Managed certificate: `chm-oceanagentics-org-cert`
+
+Terraform currently reports no drift with:
+
+```sh
+cd /Users/danvallentyne/dev/CHM/infra
+terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest
+```
+
+The managed certificate stays `PROVISIONING` until Dynadot DNS points the CHM hostname at the load balancer.
+
 ## One-Time Bootstrap
 
 Terraform state is stored in the GCS bucket `chm-network-tfstate-288836337031` with prefix `chm`.
@@ -51,5 +71,13 @@ terraform apply -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:
 After apply, use the `load_balancer_ip` output to create or update this Dynadot DNS record:
 
 ```text
-chm.oceanagentics.org A <load_balancer_ip>
+chm.oceanagentics.org A 34.110.145.254
 ```
+
+After DNS propagates, check certificate status:
+
+```sh
+gcloud compute ssl-certificates describe chm-oceanagentics-org-cert --global --project chm-network --format='get(managed.status)'
+```
+
+When the certificate is active, unauthenticated requests to `/` and `/login` should go to the Google IAP login flow, and signed-in `@oceanagentics.com` users should reach the CHM app.
