@@ -6,6 +6,7 @@ locals {
     "iap.googleapis.com",
     "iam.googleapis.com",
     "run.googleapis.com",
+    "storage.googleapis.com",
   ])
 }
 

@@ -37,7 +37,7 @@ Then build and push the app image:
 
 ```sh
 cd /Users/danvallentyne/dev/CHM
-gcloud builds submit --tag us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest .
+gcloud builds submit --region us-east4 --tag us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest .
 ```
 
 Then review and apply the full plan:

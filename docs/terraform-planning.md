@@ -69,6 +69,7 @@ Suggested files:
 - `infra/variables.tf`: project, region, domain, and naming inputs.
 - `infra/services.tf`: Google Cloud APIs Terraform expects to be enabled.
 - `infra/artifact-registry.tf`: Artifact Registry Docker repository for CHM images.
+- `infra/cloud-build.tf`: IAM bindings needed for Cloud Build image publishing.
 - `infra/service-accounts.tf`: CHM service account.
 - `infra/cloud-run.tf`: CHM Cloud Run service and ingress settings.
 - `infra/load-balancer.tf`: global IP, certificate, HTTPS proxy, forwarding rule, CHM serverless NEG, CHM backend service, and URL map.
@@ -80,19 +81,20 @@ Suggested files:
 
 The first executable Terraform should define only the minimum shared platform needed to test CHM routing:
 
-1. Required Google Cloud APIs, including Cloud Run, Cloud Build, Compute, IAP, IAM, and Artifact Registry.
+1. Required Google Cloud APIs, including Cloud Run, Cloud Build, Compute, IAP, IAM, Artifact Registry, and Cloud Storage.
 2. Artifact Registry repository `chm-apps`.
-3. Service account `chm-sa`.
-4. Cloud Run service `chm`.
-5. Serverless NEG for `chm`.
-6. Backend service for `chm` with IAP enabled.
-7. Managed certificate for `chm.oceanagentics.org`.
-8. Global external IP address.
-9. Global external HTTPS Application Load Balancer pieces required by Google Cloud.
-10. Explicit URL map rules for `/` and `/login`.
-11. IAP access for `domain:oceanagentics.com`.
-12. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
-13. Output for the load balancer IP to enter manually in Dynadot.
+3. Cloud Build IAM needed to read submitted source and write the CHM image.
+4. Service account `chm-sa`.
+5. Cloud Run service `chm`.
+6. Serverless NEG for `chm`.
+7. Backend service for `chm` with IAP enabled.
+8. Managed certificate for `chm.oceanagentics.org`.
+9. Global external IP address.
+10. Global external HTTPS Application Load Balancer pieces required by Google Cloud.
+11. Explicit URL map rules for `/` and `/login`.
+12. IAP access for `domain:oceanagentics.com`.
+13. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
+14. Output for the load balancer IP to enter manually in Dynadot.
 
 The `/explorer` rules are part of the target URL map. Add them when Ryu provides a Cloud Run service name, health expectations, and base-path compatibility for `/explorer`, or when we explicitly choose a temporary Explorer placeholder backend. Do not silently route `/explorer` to CHM.
 
