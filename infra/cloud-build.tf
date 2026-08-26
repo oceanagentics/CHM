@@ -20,3 +20,9 @@ resource "google_artifact_registry_repository_iam_member" "cloud_build_artifact_
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${local.cloud_build_runtime_service_account}"
 }
+
+resource "google_project_iam_member" "cloud_build_logs_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${local.cloud_build_runtime_service_account}"
+}

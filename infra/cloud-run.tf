@@ -52,5 +52,5 @@ resource "google_cloud_run_v2_service_iam_member" "iap_invoker" {
   location = google_cloud_run_v2_service.chm.location
   name     = google_cloud_run_v2_service.chm.name
   role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${var.project_number}@gcp-sa-iap.iam.gserviceaccount.com"
+  member   = "serviceAccount:${google_project_service_identity.iap.email}"
 }

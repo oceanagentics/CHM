@@ -10,7 +10,7 @@ The initial executable Terraform skeleton lives in `infra/`. Do not apply it unt
 
 - Terraform: the command-line tool that creates, updates, and removes infrastructure from checked-in configuration files.
 - Infrastructure as code: the practice of describing cloud resources in files instead of relying on console clicks.
-- Provider: a Terraform plugin for a cloud or service API. CHM will use the Google provider.
+- Provider: a Terraform plugin for a cloud or service API. CHM uses the Google provider, plus Google Beta only where a needed resource is not in the stable provider.
 - Resource: one managed object, such as a Cloud Run service, service account, load balancer URL map, or IAM binding.
 - Variable: an input value used by Terraform, such as project ID, region, or domain name.
 - Output: a value Terraform prints or exposes after apply, such as the load balancer IP address.
@@ -81,7 +81,7 @@ Suggested files:
 
 The first executable Terraform should define only the minimum shared platform needed to test CHM routing:
 
-1. Required Google Cloud APIs, including Cloud Run, Cloud Build, Compute, IAP, IAM, Artifact Registry, and Cloud Storage.
+1. Required Google Cloud APIs, including Cloud Run, Cloud Build, Compute, IAP, IAM, Artifact Registry, Cloud Logging, and Cloud Storage.
 2. Artifact Registry repository `chm-apps`.
 3. Cloud Build IAM needed to read submitted source and write the CHM image.
 4. Service account `chm-sa`.
@@ -92,9 +92,10 @@ The first executable Terraform should define only the minimum shared platform ne
 9. Global external IP address.
 10. Global external HTTPS Application Load Balancer pieces required by Google Cloud.
 11. Explicit URL map rules for `/` and `/login`.
-12. IAP access for `domain:oceanagentics.com`.
-13. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
-14. Output for the load balancer IP to enter manually in Dynadot.
+12. IAP service identity and Cloud Run invoker access for IAP.
+13. IAP access for `domain:oceanagentics.com`.
+14. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
+15. Output for the load balancer IP to enter manually in Dynadot.
 
 The `/explorer` rules are part of the target URL map. Add them when Ryu provides a Cloud Run service name, health expectations, and base-path compatibility for `/explorer`, or when we explicitly choose a temporary Explorer placeholder backend. Do not silently route `/explorer` to CHM.
 
