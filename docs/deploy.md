@@ -8,12 +8,13 @@ Terraform manages the Artifact Registry repository, Cloud Run service, load bala
 
 ## Current Deployment
 
-Applied on 2026-08-26:
+Initial apply on 2026-08-26; warm-instance update on 2026-08-27:
 
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
 - Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest`
+- Scaling: 1 minimum instance, 3 maximum instances
 - Load balancer IP: `34.110.145.254`
 - Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`

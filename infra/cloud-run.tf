@@ -9,7 +9,7 @@ resource "google_cloud_run_v2_service" "chm" {
     service_account = google_service_account.chm.email
 
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 3
     }
 
@@ -33,6 +33,8 @@ resource "google_cloud_run_v2_service" "chm" {
       }
 
       startup_probe {
+        period_seconds = 2
+
         http_get {
           path = "/healthz"
           port = 8080
