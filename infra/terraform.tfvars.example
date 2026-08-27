@@ -1,1 +1,1 @@
-chm_image = "us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest"
+chm_image = "us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<image-digest>"

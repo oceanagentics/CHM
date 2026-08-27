@@ -3,8 +3,8 @@ const { test } = require("node:test");
 
 const { createApp } = require("../src/server");
 
-async function withServer(fn) {
-  const app = createApp();
+async function withServer(fn, appOptions = {}) {
+  const app = createApp(appOptions);
   const server = app.listen(0, "127.0.0.1");
 
   try {
@@ -31,6 +31,9 @@ test("serves the CHM portal", async () => {
 
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /text\/html/);
+    assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
     assert.match(body, /<h1>CHM<\/h1>/);
     assert.match(body, /href="\/explorer"/);
   });
@@ -51,6 +54,74 @@ test("serves a health endpoint", async () => {
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: "ok" });
+  });
+});
+
+test("keeps /healthz available when IAP audience is configured", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/healthz`);
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ok" });
+  }, {
+    iapAudience: "/projects/288836337031/global/backendServices/1981640158971360804",
+  });
+});
+
+test("rejects missing IAP assertions when IAP audience is configured", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`);
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "missing_iap_assertion" });
+  }, {
+    iapAudience: "/projects/288836337031/global/backendServices/1981640158971360804",
+  });
+});
+
+test("accepts valid Ocean Agentics IAP assertions", async () => {
+  const iapAudience = "/projects/288836337031/global/backendServices/1981640158971360804";
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`, {
+      headers: {
+        "x-goog-iap-jwt-assertion": "valid.jwt",
+      },
+    });
+
+    assert.equal(response.status, 200);
+  }, {
+    iapAudience,
+    validateIapAssertion: async (assertion, expectedAudience) => {
+      assert.equal(assertion, "valid.jwt");
+      assert.equal(expectedAudience, iapAudience);
+
+      return {
+        email: "danny@oceanagentics.com",
+        hd: "oceanagentics.com",
+        sub: "accounts.google.com:123",
+      };
+    },
+  });
+});
+
+test("rejects IAP assertions outside Ocean Agentics", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`, {
+      headers: {
+        "x-goog-iap-jwt-assertion": "valid.jwt",
+      },
+    });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), { error: "forbidden" });
+  }, {
+    iapAudience: "/projects/288836337031/global/backendServices/1981640158971360804",
+    validateIapAssertion: async () => ({
+      email: "person@example.com",
+      hd: "example.com",
+      sub: "accounts.google.com:456",
+    }),
   });
 });
 

@@ -38,3 +38,9 @@ variable "iap_member" {
   type        = string
   default     = "domain:oceanagentics.com"
 }
+
+variable "iap_backend_service_id" {
+  description = "Numeric CHM backend service ID used in the IAP JWT audience."
+  type        = string
+  default     = "1981640158971360804"
+}

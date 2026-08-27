@@ -43,6 +43,7 @@ Use one shared domain with path routing:
 - The primary Cloud Run region is `us-east4`.
 - DNS is managed manually in Dynadot, not Terraform.
 - `chm.oceanagentics.com` is served as an additional CHM hostname, not redirected.
+- CHM validates the signed IAP JWT assertion for app routes, except `/healthz` for Cloud Run startup probes.
 - Initial Terraform-managed routes are `/` and `/login`.
 - Target Explorer routes are `/explorer` and `/explorer/*`, but Terraform should not manage them until Ryu provides a Cloud Run backend or CHM explicitly chooses a placeholder backend.
 

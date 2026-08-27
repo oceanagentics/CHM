@@ -1,3 +1,7 @@
+locals {
+  chm_iap_jwt_audience = "/projects/${var.project_number}/global/backendServices/${var.iap_backend_service_id}"
+}
+
 resource "google_cloud_run_v2_service" "chm" {
   project             = var.project_id
   name                = "chm"
@@ -23,6 +27,11 @@ resource "google_cloud_run_v2_service" "chm" {
       env {
         name  = "NODE_ENV"
         value = "production"
+      }
+
+      env {
+        name  = "IAP_JWT_AUDIENCE"
+        value = local.chm_iap_jwt_audience
       }
 
       resources {

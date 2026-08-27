@@ -1,10 +1,95 @@
 const express = require("express");
+const helmet = require("helmet");
+const { OAuth2Client } = require("google-auth-library");
 
-function createApp() {
+const IAP_HEADER = "x-goog-iap-jwt-assertion";
+const IAP_ISSUER = "https://cloud.google.com/iap";
+const OCEAN_AGENTICS_DOMAIN = "oceanagentics.com";
+const iapClient = new OAuth2Client();
+
+let cachedIapKeys = null;
+
+async function getIapPublicKeys() {
+  const now = Date.now();
+
+  if (!cachedIapKeys || cachedIapKeys.expiresAt <= now) {
+    const response = await iapClient.getIapPublicKeys();
+    cachedIapKeys = {
+      pubkeys: response.pubkeys,
+      expiresAt: now + 5 * 60 * 1000,
+    };
+  }
+
+  return cachedIapKeys.pubkeys;
+}
+
+async function validateIapAssertion(assertion, expectedAudience) {
+  const pubkeys = await getIapPublicKeys();
+  const ticket = await iapClient.verifySignedJwtWithCertsAsync(
+    assertion,
+    pubkeys,
+    expectedAudience,
+    [IAP_ISSUER],
+  );
+
+  return ticket.getPayload();
+}
+
+function getOceanAgenticsUser(payload) {
+  const email = typeof payload?.email === "string" ? payload.email.toLowerCase() : "";
+  const hostedDomain = typeof payload?.hd === "string" ? payload.hd.toLowerCase() : "";
+  const subject = typeof payload?.sub === "string" ? payload.sub : "";
+
+  if (!subject || hostedDomain !== OCEAN_AGENTICS_DOMAIN || !email.endsWith(`@${OCEAN_AGENTICS_DOMAIN}`)) {
+    return null;
+  }
+
+  return {
+    email,
+    hostedDomain,
+    subject,
+  };
+}
+
+function requireIap(options = {}) {
+  const expectedAudience = options.iapAudience || process.env.IAP_JWT_AUDIENCE;
+  const validateAssertion = options.validateIapAssertion || validateIapAssertion;
+
+  return async (req, res, next) => {
+    if (req.path === "/healthz" || !expectedAudience) {
+      return next();
+    }
+
+    const assertion = req.get(IAP_HEADER);
+
+    if (!assertion) {
+      return res.status(401).json({ error: "missing_iap_assertion" });
+    }
+
+    try {
+      const payload = await validateAssertion(assertion, expectedAudience);
+      const user = getOceanAgenticsUser(payload);
+
+      if (!user) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+
+      req.iapUser = user;
+      return next();
+    } catch (error) {
+      console.warn("IAP JWT validation failed", { message: error.message });
+      return res.status(401).json({ error: "invalid_iap_assertion" });
+    }
+  };
+}
+
+function createApp(options = {}) {
   const app = express();
 
   app.disable("x-powered-by");
   app.set("trust proxy", true);
+  app.use(helmet());
+  app.use(requireIap(options));
 
   app.get("/", (_req, res) => {
     res.type("html").send(`<!doctype html>

@@ -13,8 +13,9 @@ Initial apply on 2026-08-26; warm-instance update on 2026-08-27:
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:12e42f5a4af1f239842cd65db6e5e4f0daa05376f01058eab8282b7da434bce9`
 - Scaling: 1 minimum instance, 3 maximum instances
+- IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
 - Load balancer IP: `34.110.145.254`
 - Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
@@ -66,8 +67,8 @@ Then review and apply the full plan:
 
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
-terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest
-terraform apply -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest
+terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<image-digest>
+terraform apply -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<image-digest>
 ```
 
 After apply, use the `load_balancer_ip` output to create or update this Dynadot DNS record:
