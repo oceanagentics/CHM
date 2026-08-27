@@ -1,6 +1,5 @@
 locals {
-  cloud_build_runtime_service_account = "${var.project_number}-compute@developer.gserviceaccount.com"
-  cloud_build_source_bucket           = "${var.project_id}_cloudbuild"
+  cloud_build_source_bucket = "${var.project_id}_cloudbuild"
 }
 
 data "google_storage_bucket" "cloud_build_source" {
@@ -10,7 +9,7 @@ data "google_storage_bucket" "cloud_build_source" {
 resource "google_storage_bucket_iam_member" "cloud_build_source_reader" {
   bucket = data.google_storage_bucket.cloud_build_source.name
   role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${local.cloud_build_runtime_service_account}"
+  member = google_service_account.chm_build.member
 }
 
 resource "google_artifact_registry_repository_iam_member" "cloud_build_artifact_writer" {
@@ -18,11 +17,17 @@ resource "google_artifact_registry_repository_iam_member" "cloud_build_artifact_
   location   = var.region
   repository = google_artifact_registry_repository.chm_apps.repository_id
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${local.cloud_build_runtime_service_account}"
+  member     = google_service_account.chm_build.member
 }
 
 resource "google_project_iam_member" "cloud_build_logs_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
-  member  = "serviceAccount:${local.cloud_build_runtime_service_account}"
+  member  = google_service_account.chm_build.member
+}
+
+resource "google_service_account_iam_member" "cloud_build_submitter" {
+  service_account_id = google_service_account.chm_build.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = var.cloud_build_submitter_member
 }

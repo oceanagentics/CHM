@@ -6,7 +6,7 @@ resource "google_cloud_run_v2_service" "chm" {
   project             = var.project_id
   name                = "chm"
   location            = var.region
-  deletion_protection = false
+  deletion_protection = true
   ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {

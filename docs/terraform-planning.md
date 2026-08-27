@@ -35,6 +35,7 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - IAM principal: the identity receiving access. Initial CHM IAP access uses `domain:oceanagentics.com`.
 - Managed certificate: a Google-managed TLS certificate for CHM hostnames.
 - HTTP-to-HTTPS redirect: a small HTTP load balancer frontend that shares the HTTPS load balancer IP and redirects port 80 requests to HTTPS before they reach CHM.
+- Deletion protection: a Cloud Run setting that makes Terraform fail before deleting the CHM service unless the protection is deliberately removed first.
 
 ## Locked Decisions
 
@@ -45,6 +46,8 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - Terraform state bucket: `chm-network-tfstate-288836337031`.
 - Current load balancer IP: `34.110.145.254`.
 - HTTP requests redirect to HTTPS at the load balancer.
+- Cloud Run deletion protection: enabled.
+- Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`.
 - Infrastructure path: Terraform.
 - Routing style: explicit URL map rules per app.
 - IAP access principal: `domain:oceanagentics.com`.
@@ -74,7 +77,7 @@ Suggested files:
 - `infra/services.tf`: Google Cloud APIs Terraform expects to be enabled.
 - `infra/artifact-registry.tf`: Artifact Registry Docker repository for CHM images.
 - `infra/cloud-build.tf`: IAM bindings needed for Cloud Build image publishing.
-- `infra/service-accounts.tf`: CHM service account.
+- `infra/service-accounts.tf`: CHM runtime and build service accounts.
 - `infra/cloud-run.tf`: CHM Cloud Run service and ingress settings.
 - `infra/load-balancer.tf`: global IP, certificate, HTTPS proxy, HTTP redirect proxy, forwarding rules, CHM serverless NEG, CHM backend service, and URL maps.
 - `infra/iap.tf`: IAP access bindings and related IAM.
@@ -87,7 +90,7 @@ The first executable Terraform should define only the minimum shared platform ne
 
 1. Required Google Cloud APIs, including Cloud Run, Cloud Build, Compute, IAP, IAM, Artifact Registry, Cloud Logging, and Cloud Storage.
 2. Artifact Registry repository `chm-apps`.
-3. Cloud Build IAM needed to read submitted source and write the CHM image.
+3. Cloud Build service account `chm-build-sa` and IAM needed to read submitted source, write logs, and write the CHM image.
 4. Service account `chm-sa`.
 5. Cloud Run service `chm`.
 6. Serverless NEG for `chm`.

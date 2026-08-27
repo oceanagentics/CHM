@@ -5,3 +5,11 @@ resource "google_service_account" "chm" {
 
   depends_on = [google_project_service.required]
 }
+
+resource "google_service_account" "chm_build" {
+  project      = var.project_id
+  account_id   = "chm-build-sa"
+  display_name = "CHM Cloud Build service account"
+
+  depends_on = [google_project_service.required]
+}

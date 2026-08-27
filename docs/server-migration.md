@@ -45,6 +45,8 @@ Use one shared domain with path routing:
 - `chm.oceanagentics.com` is served as an additional CHM hostname, not redirected.
 - HTTP requests redirect to the same host and path on HTTPS at the load balancer.
 - CHM validates the signed IAP JWT assertion for app routes, except `/healthz` for Cloud Run startup probes.
+- Cloud Run deletion protection is enabled for the CHM service.
+- Cloud Build uses the dedicated `chm-build-sa` service account instead of the default Compute service account.
 - Initial Terraform-managed routes are `/` and `/login`.
 - Target Explorer routes are `/explorer` and `/explorer/*`, but Terraform should not manage them until Ryu provides a Cloud Run backend or CHM explicitly chooses a placeholder backend.
 

@@ -18,6 +18,11 @@ output "artifact_registry_repository" {
   value       = google_artifact_registry_repository.chm_apps.name
 }
 
+output "cloud_build_service_account" {
+  description = "Dedicated service account used by CHM Cloud Build jobs."
+  value       = google_service_account.chm_build.email
+}
+
 output "dynadot_dns_record" {
   description = "Manual DNS record to create in Dynadot after the load balancer exists."
   value       = "${var.domain} A ${google_compute_global_address.chm.address}"

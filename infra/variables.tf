@@ -44,3 +44,9 @@ variable "iap_backend_service_id" {
   type        = string
   default     = "1981640158971360804"
 }
+
+variable "cloud_build_submitter_member" {
+  description = "Operator allowed to submit CHM builds as the dedicated Cloud Build service account."
+  type        = string
+  default     = "user:danny@oceanagentics.com"
+}

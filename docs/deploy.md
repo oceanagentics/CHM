@@ -15,6 +15,8 @@ Initial apply on 2026-08-26; warm-instance update on 2026-08-27:
 - Cloud Run service: `chm`
 - Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:12e42f5a4af1f239842cd65db6e5e4f0daa05376f01058eab8282b7da434bce9`
 - Scaling: 1 minimum instance, 3 maximum instances
+- Cloud Run deletion protection: enabled
+- Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
 - Load balancer IP: `34.110.145.254`
 - Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
@@ -50,18 +52,25 @@ cd /Users/danvallentyne/dev/CHM/infra
 terraform init
 ```
 
-Then bootstrap the image repository:
+Then bootstrap the image repository and build service account:
 
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
-terraform apply -target=google_project_service.required -target=google_artifact_registry_repository.chm_apps
+terraform apply \
+  -target=google_project_service.required \
+  -target=google_artifact_registry_repository.chm_apps \
+  -target=google_service_account.chm_build \
+  -target=google_storage_bucket_iam_member.cloud_build_source_reader \
+  -target=google_artifact_registry_repository_iam_member.cloud_build_artifact_writer \
+  -target=google_project_iam_member.cloud_build_logs_writer \
+  -target=google_service_account_iam_member.cloud_build_submitter
 ```
 
-Then build and push the app image:
+Then build and push the app image. The build config uses the dedicated CHM Cloud Build service account and stores build logs in Cloud Logging:
 
 ```sh
 cd /Users/danvallentyne/dev/CHM
-gcloud builds submit --region us-east4 --tag us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest .
+gcloud builds submit --region us-east4 --config cloudbuild.yaml .
 ```
 
 Then review and apply the full plan:
