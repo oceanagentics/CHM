@@ -34,6 +34,7 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - IAP: Identity-Aware Proxy, the Google login and access boundary for protected CHM routes.
 - IAM principal: the identity receiving access. Initial CHM IAP access uses `domain:oceanagentics.com`.
 - Managed certificate: a Google-managed TLS certificate for CHM hostnames.
+- HTTP-to-HTTPS redirect: a small HTTP load balancer frontend that shares the HTTPS load balancer IP and redirects port 80 requests to HTTPS before they reach CHM.
 
 ## Locked Decisions
 
@@ -43,6 +44,7 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - Primary Cloud Run region: `us-east4`.
 - Terraform state bucket: `chm-network-tfstate-288836337031`.
 - Current load balancer IP: `34.110.145.254`.
+- HTTP requests redirect to HTTPS at the load balancer.
 - Infrastructure path: Terraform.
 - Routing style: explicit URL map rules per app.
 - IAP access principal: `domain:oceanagentics.com`.
@@ -74,7 +76,7 @@ Suggested files:
 - `infra/cloud-build.tf`: IAM bindings needed for Cloud Build image publishing.
 - `infra/service-accounts.tf`: CHM service account.
 - `infra/cloud-run.tf`: CHM Cloud Run service and ingress settings.
-- `infra/load-balancer.tf`: global IP, certificate, HTTPS proxy, forwarding rule, CHM serverless NEG, CHM backend service, and URL map.
+- `infra/load-balancer.tf`: global IP, certificate, HTTPS proxy, HTTP redirect proxy, forwarding rules, CHM serverless NEG, CHM backend service, and URL maps.
 - `infra/iap.tf`: IAP access bindings and related IAM.
 - `infra/outputs.tf`: load balancer IP, service URLs, and backend identifiers.
 - `infra/terraform.tfvars.example`: example variable value for the CHM container image.

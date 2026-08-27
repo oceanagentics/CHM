@@ -116,6 +116,23 @@ resource "google_compute_target_https_proxy" "chm" {
   ]
 }
 
+resource "google_compute_url_map" "chm_http_redirect" {
+  project = var.project_id
+  name    = "chm-http-redirect-url-map"
+
+  default_url_redirect {
+    https_redirect         = true
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+    strip_query            = false
+  }
+}
+
+resource "google_compute_target_http_proxy" "chm_http_redirect" {
+  project = var.project_id
+  name    = "chm-http-redirect-proxy"
+  url_map = google_compute_url_map.chm_http_redirect.id
+}
+
 resource "google_compute_global_forwarding_rule" "chm_https" {
   project               = var.project_id
   name                  = "chm-https-forwarding-rule"
@@ -123,4 +140,13 @@ resource "google_compute_global_forwarding_rule" "chm_https" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "443"
   target                = google_compute_target_https_proxy.chm.id
+}
+
+resource "google_compute_global_forwarding_rule" "chm_http_redirect" {
+  project               = var.project_id
+  name                  = "chm-http-redirect-forwarding-rule"
+  ip_address            = google_compute_global_address.chm.address
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.chm_http_redirect.id
 }
