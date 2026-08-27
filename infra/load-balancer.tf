@@ -16,6 +16,17 @@ resource "google_compute_managed_ssl_certificate" "chm" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_compute_managed_ssl_certificate" "chm_alternate" {
+  project = var.project_id
+  name    = "chm-oceanagentics-com-cert"
+
+  managed {
+    domains = [var.alternate_domain]
+  }
+
+  depends_on = [google_project_service.required]
+}
+
 resource "google_compute_region_network_endpoint_group" "chm" {
   project               = var.project_id
   name                  = "chm-web-neg"
@@ -56,7 +67,7 @@ resource "google_compute_url_map" "chm" {
   default_service = google_compute_backend_service.chm.id
 
   host_rule {
-    hosts        = [var.domain]
+    hosts        = [var.domain, var.alternate_domain]
     path_matcher = "chm"
   }
 
@@ -81,13 +92,28 @@ resource "google_compute_url_map" "chm" {
     path    = "/login"
     service = google_compute_backend_service.chm.id
   }
+
+  test {
+    host    = var.alternate_domain
+    path    = "/"
+    service = google_compute_backend_service.chm.id
+  }
+
+  test {
+    host    = var.alternate_domain
+    path    = "/login"
+    service = google_compute_backend_service.chm.id
+  }
 }
 
 resource "google_compute_target_https_proxy" "chm" {
-  project          = var.project_id
-  name             = "chm-https-proxy"
-  url_map          = google_compute_url_map.chm.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.chm.id]
+  project = var.project_id
+  name    = "chm-https-proxy"
+  url_map = google_compute_url_map.chm.id
+  ssl_certificates = [
+    google_compute_managed_ssl_certificate.chm.id,
+    google_compute_managed_ssl_certificate.chm_alternate.id,
+  ]
 }
 
 resource "google_compute_global_forwarding_rule" "chm_https" {

@@ -1,5 +1,5 @@
 output "load_balancer_ip" {
-  description = "Use this IP for the manual Dynadot A record for chm.oceanagentics.org."
+  description = "Use this IP for the manual Dynadot A records for CHM hostnames."
   value       = google_compute_global_address.chm.address
 }
 
@@ -21,4 +21,12 @@ output "artifact_registry_repository" {
 output "dynadot_dns_record" {
   description = "Manual DNS record to create in Dynadot after the load balancer exists."
   value       = "${var.domain} A ${google_compute_global_address.chm.address}"
+}
+
+output "dynadot_dns_records" {
+  description = "Manual DNS records to create in Dynadot after the load balancer exists."
+  value = [
+    "${var.domain} A ${google_compute_global_address.chm.address}",
+    "${var.alternate_domain} A ${google_compute_global_address.chm.address}",
+  ]
 }

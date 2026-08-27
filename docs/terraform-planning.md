@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Terraform should define and manage the shared CHM Google Cloud infrastructure for `chm.oceanagentics.org`.
+Terraform should define and manage the shared CHM Google Cloud infrastructure for `chm.oceanagentics.org` and `chm.oceanagentics.com`.
 
 The initial executable Terraform stack lives in `infra/`. Review `terraform plan` before future applies.
 
@@ -27,18 +27,19 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - Serverless NEG: a load-balancer backend target that points at a Cloud Run service.
 - Backend service: the load-balancer backend configuration that wraps a NEG and can carry IAP policy.
 - URL map: the load-balancer routing table that maps host/path rules to backend services.
-- Host rule: the URL map rule that matches `chm.oceanagentics.org`.
+- Host rule: the URL map rule that matches `chm.oceanagentics.org` and `chm.oceanagentics.com`.
 - Path matcher: the URL map section that chooses a backend from the request path.
 - Path rule: an explicit path mapping, such as `/explorer/*` to the Explorer backend.
 - URL mask routing: a serverless NEG pattern that derives service names from URL paths. CHM will not use this first.
 - IAP: Identity-Aware Proxy, the Google login and access boundary for protected CHM routes.
 - IAM principal: the identity receiving access. Initial CHM IAP access uses `domain:oceanagentics.com`.
-- Managed certificate: a Google-managed TLS certificate for `chm.oceanagentics.org`.
+- Managed certificate: a Google-managed TLS certificate for CHM hostnames.
 
 ## Locked Decisions
 
 - Project: `chm-network`.
 - Domain: `chm.oceanagentics.org`.
+- Alternate domain: `chm.oceanagentics.com`.
 - Primary Cloud Run region: `us-east4`.
 - Terraform state bucket: `chm-network-tfstate-288836337031`.
 - Current load balancer IP: `34.110.145.254`.
@@ -108,6 +109,8 @@ Initial routing should be explicit and reviewable:
 | --- | --- | --- |
 | `chm.oceanagentics.org` | `/` | `chm` |
 | `chm.oceanagentics.org` | `/login` | `chm` |
+| `chm.oceanagentics.com` | `/` | `chm` |
+| `chm.oceanagentics.com` | `/login` | `chm` |
 
 The URL map default backend should route to CHM so unmatched CHM-domain requests get a CHM-owned response.
 
@@ -134,6 +137,7 @@ After Terraform creates the load balancer, use the `load_balancer_ip` output to 
 
 ```text
 chm.oceanagentics.org A 34.110.145.254
+chm.oceanagentics.com A 34.110.145.254
 ```
 
 ## Implementation Rules

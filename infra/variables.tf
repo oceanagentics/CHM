@@ -22,6 +22,12 @@ variable "domain" {
   default     = "chm.oceanagentics.org"
 }
 
+variable "alternate_domain" {
+  description = "Additional CHM domain served by the same load balancer."
+  type        = string
+  default     = "chm.oceanagentics.com"
+}
+
 variable "chm_image" {
   description = "Container image for the CHM Cloud Run service."
   type        = string

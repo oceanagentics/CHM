@@ -4,7 +4,7 @@ Source plan: `/Users/danvallentyne/dev/oceanagentics/CHM-Network/outputs/ryu-clo
 
 ## Purpose
 
-CHM is the official user-facing entry app, application switcher, loader, and IAP-protected portal for `chm.oceanagentics.org`.
+CHM is the official user-facing entry app, application switcher, loader, and IAP-protected portal for `chm.oceanagentics.org` and `chm.oceanagentics.com`.
 
 Explorer, currently developed in the Ryu repo, remains the graph application and is mounted under CHM at `/explorer`.
 
@@ -15,8 +15,8 @@ The first CHM slice was deployed on 2026-08-26.
 - Cloud Run service `chm` is deployed in `us-east4`.
 - Terraform state is stored in `gs://chm-network-tfstate-288836337031/chm`.
 - The HTTPS load balancer IP is `34.110.145.254`.
-- Dynadot DNS still needs an `A` record for `chm.oceanagentics.org` pointing to `34.110.145.254`.
-- The Google-managed certificate will remain provisioning until DNS points at the load balancer.
+- Dynadot DNS still needs `A` records for `chm.oceanagentics.org` and `chm.oceanagentics.com` pointing to `34.110.145.254`.
+- Google-managed certificates can remain provisioning until DNS points at the load balancer.
 - `/explorer` routing remains deferred until the Ryu backend is ready or CHM explicitly chooses a temporary placeholder.
 
 ## Target Routes
@@ -26,6 +26,7 @@ Use one shared domain with path routing:
 - `https://chm.oceanagentics.org/` routes to CHM.
 - `https://chm.oceanagentics.org/login` routes to CHM and should trigger or forward to the IAP login flow, not implement a separate CHM password screen.
 - `https://chm.oceanagentics.org/explorer` routes to Explorer.
+- `https://chm.oceanagentics.com/` and `/login` route to the same CHM backend.
 - Future CHM apps use their own path prefixes, for example `/otherapp1` and `/otherapp2`.
 
 `/` and `/login` are IAP-protected. The first implementation should treat IAP as the shared Google login boundary and avoid building a separate user-auth system.
@@ -41,6 +42,7 @@ Use one shared domain with path routing:
 - The minimal CHM app stack is Node.js and Express.
 - The primary Cloud Run region is `us-east4`.
 - DNS is managed manually in Dynadot, not Terraform.
+- `chm.oceanagentics.com` is served as an additional CHM hostname, not redirected.
 - Initial Terraform-managed routes are `/` and `/login`.
 - Target Explorer routes are `/explorer` and `/explorer/*`, but Terraform should not manage them until Ryu provides a Cloud Run backend or CHM explicitly chooses a placeholder backend.
 

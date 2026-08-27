@@ -15,7 +15,8 @@ Applied on 2026-08-26:
 - Cloud Run service: `chm`
 - Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest`
 - Load balancer IP: `34.110.145.254`
-- Managed certificate: `chm-oceanagentics-org-cert`
+- Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
+- Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
 
 Terraform currently reports no drift with:
 
@@ -24,7 +25,7 @@ cd /Users/danvallentyne/dev/CHM/infra
 terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest
 ```
 
-The managed certificate stays `PROVISIONING` until Dynadot DNS points the CHM hostname at the load balancer.
+The managed certificate stays `PROVISIONING` until Dynadot DNS points the CHM hostnames at the load balancer.
 
 ## One-Time Bootstrap
 
@@ -72,12 +73,14 @@ After apply, use the `load_balancer_ip` output to create or update this Dynadot 
 
 ```text
 chm.oceanagentics.org A 34.110.145.254
+chm.oceanagentics.com A 34.110.145.254
 ```
 
 After DNS propagates, check certificate status:
 
 ```sh
 gcloud compute ssl-certificates describe chm-oceanagentics-org-cert --global --project chm-network --format='get(managed.status)'
+gcloud compute ssl-certificates describe chm-oceanagentics-com-cert --global --project chm-network --format='get(managed.status)'
 ```
 
 When the certificate is active, unauthenticated requests to `/` and `/login` should go to the Google IAP login flow, and signed-in `@oceanagentics.com` users should reach the CHM app.
