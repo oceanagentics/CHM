@@ -31,9 +31,8 @@ balancer, the app validates signed IAP JWT assertions, Terraform pins deployed
 images by digest, Cloud SQL deletion protection is enabled, and Cloud Build uses
 a dedicated service account.
 
-The main remaining work is focused: tighten Explorer database schema privileges
-and decide whether to enable Explorer app-level IAP JWT validation. Disabling
-likely unused APIs is explicitly on hold.
+The main remaining work is focused: decide whether to enable Explorer app-level
+IAP JWT validation and resolve the approved-but-blocked unused API cleanup.
 
 Legacy public infrastructure cleanup completed on 2026-08-28:
 
@@ -54,6 +53,8 @@ Legacy public infrastructure cleanup completed on 2026-08-28:
 - Confirmed Cloud Monitoring email delivery to `danny@oceanagentics.com` with
   an IAP authentication failure alert on 2026-08-28.
 - Enabled Cloud SQL platform deletion protection for instance `chm`.
+- Tightened Explorer database privileges so only `explorer_migration` can create
+  schema objects.
 
 ## Findings
 
@@ -68,7 +69,7 @@ Legacy public infrastructure cleanup completed on 2026-08-28:
 | CHM-SEC-007 | Medium | Mitigated; verified channel | Load-balancer logging is enabled in Terraform. Cloud Logging has `_Default` retention of 30 days and locked `_Required` retention of 400 days. Terraform manages an email notification channel for `danny@oceanagentics.com` and alert policies for repeated IAP failures, Cloud Run 5xx spikes, IAM policy changes, and service-account key creation. Email delivery was confirmed by the IAP authentication failure alert received on 2026-08-28 at 05:41 UTC. Security Command Center is not in the enabled API list. | Alerts surface as Cloud Monitoring incidents under Monitoring > Alerting and notify the configured email channel. Review Security Command Center availability before broader production use. |
 | CHM-SEC-008 | Medium | Mitigated; verified | Cloud Build now uses `chm-build-sa` instead of the default Compute service account. Artifact Registry writer access is limited to CHM and Explorer build service accounts, and submitter impersonation is limited to `user:danny@oceanagentics.com`. | Keep build service accounts per app. Grant only source read, Artifact Registry write, log write, and explicit submitter impersonation. Do not grant project `Editor` to build identities. |
 | CHM-SEC-009 | Medium | Mitigated; accepted | Explorer database password secrets exist in Secret Manager: `explorer-db-read-password`, `explorer-db-write-password`, and `explorer-db-migration-password`. Generated secret values also exist in Terraform state. The Terraform state bucket has uniform bucket-level access and bucket IAM currently grants only `roles/storage.admin` to `user:danny@oceanagentics.com`. Secret access is narrow: read password to `explorer-sa`, write password to `explorer-api-sa`, and migration password to `explorer-migration-sa`. Live Secret Manager checks on 2026-08-28 show version `2` enabled and version `1` destroyed for all three secrets. | Treat Terraform state as sensitive. Keep bucket versioning and uniform access. Avoid granting project-level Viewer/Editor broadly. No immediate rotation is required unless access expands, compromise is suspected, or the privilege model changes materially. |
-| CHM-SEC-010 | High | Open; remediation needed | Explorer database table-level grants are directionally correct, and runtime services use separate DB users: browser-facing `explorer` uses `explorer_read`; private `explorer-api` uses `explorer_write`; migration jobs use `explorer_migration`. Authenticated CHM users should still get app-mediated writes through `explorer-api`; this finding is only about schema-object creation. In PostgreSQL, `public` is the default schema name inside the private database, not public internet access. Live Cloud Run privilege probes on 2026-08-28 showed both `explorer_read` and `explorer_write` could `CREATE TABLE` in schema `public`. Cloud SQL has been seeded from deployed `bootstrap.public.json`, and read-count checks verified `102` sources, `117` nodes, `139` edges, `10` ryu routes, and `2` saved views. The obsolete failed `explorer-import` job has been deleted. | In the Ryu migration SQL, revoke schema `CREATE` from `PUBLIC`, `explorer_read`, and `explorer_write`; grant schema `CREATE` only to `explorer_migration`; keep normal row read/write privileges for runtime roles; rerun migrations; then rerun read/write privilege probes and row-count checks. |
+| CHM-SEC-010 | High | Completed; verified | Explorer database table-level grants are directionally correct, and runtime services use separate DB users: browser-facing `explorer` uses `explorer_read`; private `explorer-api` uses `explorer_write`; migration jobs use `explorer_migration`. Authenticated CHM users still get app-mediated writes through `explorer-api`; this finding was only about schema-object creation. In PostgreSQL, `public` is the default schema name inside the private database, not public internet access. Root cause: Cloud SQL-created users were members of `cloudsqlsuperuser`, and that inherited role had schema `CREATE`. On 2026-08-28, the live database fix removed `cloudsqlsuperuser`, `CREATEDB`, and `CREATEROLE` from `explorer_read` and `explorer_write`; revoked database/schema `CREATE` from read/write and `PUBLIC`; preserved table read/write grants; and left schema `CREATE` only on `explorer_migration`. Post-fix probes verified `explorer_read` can select but cannot insert or create tables; `explorer_write` can insert rows in a rolled-back transaction but cannot create tables; and `explorer_migration` can create tables in a rolled-back transaction. Cloud SQL row-count checks still verified `102` sources, `117` nodes, `139` edges, `10` ryu routes, and `2` saved views. | Keep the Ryu migration SQL as the source of truth for these grants. Re-run read/write/migration privilege probes after future Cloud SQL user recreation, schema migrations, or role changes. |
 | CHM-SEC-011 | Medium | Mitigated; monitor | The private Explorer API path depends on Cloud Run IAM plus CHM-forwarded user context. Live checks verified `explorer-api` has internal-only ingress, direct unauthenticated `run.app` requests return a Google platform `404`, and Cloud Run `roles/run.invoker` is granted only to `serviceAccount:chm-sa@chm-network.iam.gserviceaccount.com`. Ryu server tests pass for public-mode write denial, API-mode missing-user denial, and CHM-mediated write allowance. | Keep `explorer-api` internal-only with `roles/run.invoker` granted only to `chm-sa`. Treat the `x-chm-caller-service-account` header as defense-in-depth only; Cloud Run IAM is the real caller boundary. Repeat production smoke tests when changing authenticated Explorer write workflows. |
 | CHM-SEC-012 | Low | Accepted for now; verified | IAP access is granted to the full Ocean Agentics Workspace domain. This matches the locked decision, but it is broader than an app-specific Google Group. Live IAP policy on `chm-web-backend` grants only `roles/iap.httpsResourceAccessor` to `domain:oceanagentics.com`. | Keep `domain:oceanagentics.com` while CHM is an internal company portal. Move to a group such as `group:chm-users@oceanagentics.com` if access needs to become narrower. |
 | CHM-SEC-013 | Low | Mitigated; monitor | `/healthz` is intentionally unauthenticated for Cloud Run startup probes. It currently returns only a minimal status payload. | Keep `/healthz` free of build metadata, environment details, dependency status, and user information. Do not add sensitive diagnostics to this route. |
@@ -138,11 +139,9 @@ dependency when attempted without `--force`:
 
 ## Recommended Next Actions
 
-1. Fix Explorer `public` schema privileges so only `explorer_migration` can
-   create schema objects, then rerun read/write privilege probes.
-2. Decide whether to enable Explorer app-level IAP JWT validation with backend
+1. Decide whether to enable Explorer app-level IAP JWT validation with backend
    service ID `4582439918390522076`.
-3. Resolve the CHM-SEC-019 API dependency block. The candidate list is approved
+2. Resolve the CHM-SEC-019 API dependency block. The candidate list is approved
    for disablement, but the no-force attempt was blocked by
    `cloudapis.googleapis.com`; do not force it without a separate decision.
 
@@ -161,6 +160,12 @@ dependency when attempted without `--force`:
 - Stale Network Management connectivity-test cleanup and API review on 2026-08-28
 - Cloud Monitoring email alert receipt on 2026-08-28
 - Cloud SQL deletion-protection apply and verification on 2026-08-28
-- Explorer database check `explorer-db-check-7gpt7` on 2026-08-28
+- Explorer database checks `explorer-db-check-7gpt7` and
+  `explorer-db-check-qx72c` on 2026-08-28
 - No-force CHM-SEC-019 API disable attempt on 2026-08-28; blocked by
   `cloudapis.googleapis.com` dependency before any API was disabled
+- Live Explorer database privilege fix on 2026-08-28; verified by
+  `explorer-priv-fix-20260828-vxmdz`,
+  `explorer-priv-fix-20260828-zcl96`,
+  `explorer-priv-fix-20260828-6hfws`, and
+  `explorer-priv-fix-20260828-wj97t`
