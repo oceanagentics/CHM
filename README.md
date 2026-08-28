@@ -5,9 +5,10 @@ It is intended to be the shared entry point, login boundary, application switche
 and loader for apps served from `chm.oceanagentics.org` and
 `chm.oceanagentics.com`.
 
-Explorer is expected to live under `/explorer`, but Explorer routing is deferred
-until the Ryu project provides a ready Cloud Run backend or CHM explicitly adds a
-temporary placeholder.
+Explorer lives under `/explorer`. Terraform keeps the Explorer slice gated by
+`enable_explorer`, and the current live project has that slice applied with a
+built Explorer image. Treat Explorer as security-gated until the remaining
+database and private API checks are complete.
 
 ## What Exists Today
 
@@ -17,8 +18,7 @@ The current CHM app is a minimal Node.js and Express portal shell.
 - `/login` relies on Google IAP for unauthenticated login and redirects
   authenticated users to `/`.
 - `/healthz` returns `{ "status": "ok" }` for Cloud Run startup probes.
-- `/explorer` is linked from the portal but intentionally not wired to a backend
-  yet.
+- `/explorer` routes to the Explorer backend behind IAP.
 
 The app validates Google IAP signed JWT assertions for app routes, requires
 Ocean Agentics Workspace users, sends security headers with Helmet, and runs as a
@@ -26,26 +26,37 @@ non-root user in the container.
 
 ## What Is Running
 
-Last verified: August 27, 2026.
+Last verified: August 28, 2026.
 
 - Google Cloud project: `chm-network`
 - Primary region: `us-east4`
 - Cloud Run service: `chm`
 - Runtime service account: `chm-sa@chm-network.iam.gserviceaccount.com`
 - Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:12e42f5a4af1f239842cd65db6e5e4f0daa05376f01058eab8282b7da434bce9`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:83f98d262f9a14aef67f9a0f2f626a0e06859a949258ca1887845c7049dfbff8`
 - Scaling: 1 minimum instance, 3 maximum instances
+- Explorer Cloud Run services: `explorer` and private `explorer-api`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
+- Cloud SQL instance: `chm`, database `explorer`
 - Load balancer IP: `34.110.145.254`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
 - Managed certificates: `chm-oceanagentics-org-cert`,
   `chm-oceanagentics-com-cert`
 - IAP access: `domain:oceanagentics.com`
+- Alerts: Cloud Monitoring email channel `danny@oceanagentics.com` for IAP
+  failures, Cloud Run 5xx spikes, IAM policy changes, and service-account key
+  creation
 - Terraform state: `gs://chm-network-tfstate-288836337031/chm`
 
 The Cloud Run service is restricted to internal and Cloud Load Balancing ingress,
 so the default `run.app` URL should not bypass IAP. HTTP port 80 redirects to the
 matching HTTPS URL at the load balancer. Cloud Run deletion protection is
-enabled.
+enabled. Public DNS for both hostnames resolves to the load balancer IP, and
+unauthenticated HTTPS requests are intercepted by IAP.
+
+Terraform keeps the Explorer slice behind `enable_explorer=false` by default for
+fresh/bootstrap applies, but the live CHM project currently runs it with
+`enable_explorer=true`.
 
 ## Development
 

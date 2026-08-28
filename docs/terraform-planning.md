@@ -48,6 +48,7 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - HTTP requests redirect to HTTPS at the load balancer.
 - Cloud Run deletion protection: enabled.
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`.
+- Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`.
 - Infrastructure path: Terraform.
 - Routing style: explicit URL map rules per app.
 - IAP access principal: `domain:oceanagentics.com`.
@@ -57,12 +58,11 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - Minimal CHM app stack: Node.js and Express.
 - DNS is managed manually in Dynadot.
 - Explorer is path-mounted at `/explorer`.
+- Explorer Cloud SQL and Cloud Run resources are gated behind `enable_explorer=false` by default.
 
 ## Open Decisions
 
-- Whether the first Explorer backend is the real Ryu Cloud Run service or a temporary placeholder.
-- Whether CHM validates the IAP signed JWT in the first app build or after the first infrastructure deployment.
-- Whether IAP policy is applied per backend service with the same principal or initially at a broader IAP resource level.
+- Whether Explorer should validate its load-balancer IAP JWT immediately after the Explorer backend service ID is known.
 
 ## Planned Terraform Shape
 
@@ -78,9 +78,12 @@ Suggested files:
 - `infra/artifact-registry.tf`: Artifact Registry Docker repository for CHM images.
 - `infra/cloud-build.tf`: IAM bindings needed for Cloud Build image publishing.
 - `infra/service-accounts.tf`: CHM runtime and build service accounts.
+- `infra/cloud-sql.tf`: gated shared Cloud SQL instance `chm`, `explorer` database, and Explorer database users.
 - `infra/cloud-run.tf`: CHM Cloud Run service and ingress settings.
+- `infra/explorer.tf`: gated Explorer service accounts, database secrets, Cloud Run services, serverless NEG, backend service, and IAM bindings.
 - `infra/load-balancer.tf`: global IP, certificate, HTTPS proxy, HTTP redirect proxy, forwarding rules, CHM serverless NEG, CHM backend service, and URL maps.
 - `infra/iap.tf`: IAP access bindings and related IAM.
+- `infra/monitoring.tf`: basic Cloud Monitoring notification channel and alert policies.
 - `infra/outputs.tf`: load balancer IP, service URLs, and backend identifiers.
 - `infra/terraform.tfvars.example`: example variable value for the CHM container image.
 
@@ -103,8 +106,33 @@ The first executable Terraform should define only the minimum shared platform ne
 13. IAP access for `domain:oceanagentics.com`.
 14. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
 15. Output for the load balancer IP to enter manually in Dynadot.
+16. Basic alerting for IAP failures, Cloud Run 5xx spikes, IAM changes, and service-account key creation.
 
-The `/explorer` rules are part of the target URL map. Add them when Ryu provides a Cloud Run service name, health expectations, and base-path compatibility for `/explorer`, or when we explicitly choose a temporary Explorer placeholder backend. Do not silently route `/explorer` to CHM.
+The `/explorer` rules are part of the target URL map and are now gated behind `enable_explorer=true`. Do not silently route `/explorer` to CHM.
+
+## Explorer Resource Slice
+
+The next Terraform apply should first create the non-billable Explorer build identity so the Ryu image can be built:
+
+1. Service account `explorer-build-sa`.
+2. Artifact Registry writer access on `chm-apps`.
+3. Cloud Build source bucket reader access.
+4. Cloud Logging writer access.
+5. Service account user grant for `user:danny@oceanagentics.com`.
+
+After a real Explorer image digest exists, apply with `enable_explorer=true` and `explorer_image=<digest>` to create:
+
+1. Shared Cloud SQL PostgreSQL instance `chm`.
+2. PostgreSQL database `explorer`.
+3. Generated passwords for `explorer_read`, `explorer_write`, and `explorer_migration`.
+4. Secret Manager secrets for the generated database passwords.
+5. Service accounts `explorer-sa` and optional `explorer-api-sa`.
+6. Cloud SQL Client grants for the Explorer service accounts.
+7. Cloud Run service `explorer` in read-only public mode.
+8. Optional private Cloud Run service `explorer-api` in write/admin API mode.
+9. Serverless NEG and backend service for `explorer`.
+10. IAP access and IAP service-agent invoker permissions for the Explorer backend.
+11. `/explorer` and `/explorer/*` URL-map rules.
 
 ## Explicit URL Map Rules
 
@@ -119,12 +147,14 @@ Initial routing should be explicit and reviewable:
 
 The URL map default backend should route to CHM so unmatched CHM-domain requests get a CHM-owned response.
 
-Target Explorer routing remains explicit, but deferred:
+Target Explorer routing remains explicit and gated:
 
 | Host | Path | Backend |
 | --- | --- | --- |
 | `chm.oceanagentics.org` | `/explorer` | `explorer` |
 | `chm.oceanagentics.org` | `/explorer/*` | `explorer` |
+| `chm.oceanagentics.com` | `/explorer` | `explorer` |
+| `chm.oceanagentics.com` | `/explorer/*` | `explorer` |
 
 ## State Plan
 

@@ -50,3 +50,81 @@ variable "cloud_build_submitter_member" {
   type        = string
   default     = "user:danny@oceanagentics.com"
 }
+
+variable "alert_email" {
+  description = "Email notification channel for CHM security and availability alerts."
+  type        = string
+  default     = "danny@oceanagentics.com"
+}
+
+variable "enable_explorer" {
+  description = "Create Explorer Cloud Run, Cloud SQL, and /explorer load-balancer resources."
+  type        = bool
+  default     = false
+}
+
+variable "enable_explorer_api" {
+  description = "Create the private Explorer write/admin API service when Explorer is enabled."
+  type        = bool
+  default     = true
+}
+
+variable "explorer_image" {
+  description = "Container image for the browser-facing Explorer Cloud Run service. Required when enable_explorer is true."
+  type        = string
+  default     = ""
+}
+
+variable "explorer_api_image" {
+  description = "Container image for the private Explorer API service. Defaults to explorer_image when empty."
+  type        = string
+  default     = ""
+}
+
+variable "explorer_iap_backend_service_id" {
+  description = "Numeric Explorer backend service ID used for Explorer app-level IAP JWT validation after the backend exists."
+  type        = string
+  default     = ""
+}
+
+variable "cloud_sql_tier" {
+  description = "Cloud SQL machine tier for the shared CHM PostgreSQL instance."
+  type        = string
+  default     = "db-f1-micro"
+}
+
+variable "cloud_sql_disk_size_gb" {
+  description = "Initial disk size for the shared CHM PostgreSQL instance."
+  type        = number
+  default     = 10
+}
+
+variable "cloud_sql_backup_start_time" {
+  description = "UTC time window start for Cloud SQL backups."
+  type        = string
+  default     = "09:00"
+}
+
+variable "explorer_min_instance_count" {
+  description = "Minimum instances for the browser-facing Explorer service."
+  type        = number
+  default     = 0
+}
+
+variable "explorer_max_instance_count" {
+  description = "Maximum instances for the browser-facing Explorer service."
+  type        = number
+  default     = 3
+}
+
+variable "explorer_api_min_instance_count" {
+  description = "Minimum instances for the private Explorer API service."
+  type        = number
+  default     = 0
+}
+
+variable "explorer_api_max_instance_count" {
+  description = "Maximum instances for the private Explorer API service."
+  type        = number
+  default     = 2
+}

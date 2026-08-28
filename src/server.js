@@ -1,13 +1,15 @@
 const express = require("express");
 const helmet = require("helmet");
-const { OAuth2Client } = require("google-auth-library");
+const { GoogleAuth, OAuth2Client } = require("google-auth-library");
 
 const IAP_HEADER = "x-goog-iap-jwt-assertion";
 const IAP_ISSUER = "https://cloud.google.com/iap";
 const OCEAN_AGENTICS_DOMAIN = "oceanagentics.com";
 const iapClient = new OAuth2Client();
+const serviceAuth = new GoogleAuth();
 
 let cachedIapKeys = null;
+const idTokenClients = new Map();
 
 async function getIapPublicKeys() {
   const now = Date.now();
@@ -55,8 +57,16 @@ function requireIap(options = {}) {
   const expectedAudience = options.iapAudience || process.env.IAP_JWT_AUDIENCE;
   const validateAssertion = options.validateIapAssertion || validateIapAssertion;
 
+  if (!expectedAudience && process.env.NODE_ENV === "production") {
+    throw new Error("IAP_JWT_AUDIENCE is required in production");
+  }
+
   return async (req, res, next) => {
-    if (req.path === "/healthz" || !expectedAudience) {
+    if (req.path === "/healthz") {
+      return next();
+    }
+
+    if (!expectedAudience) {
       return next();
     }
 
@@ -83,13 +93,73 @@ function requireIap(options = {}) {
   };
 }
 
+async function getIdTokenClient(audience) {
+  if (!idTokenClients.has(audience)) {
+    idTokenClients.set(audience, await serviceAuth.getIdTokenClient(audience));
+  }
+
+  return idTokenClients.get(audience);
+}
+
+function explorerApiUrl(req) {
+  const explorerApiBase = process.env.EXPLORER_API_URL;
+  if (!explorerApiBase) {
+    return null;
+  }
+
+  const base = explorerApiBase.replace(/\/+$/, "");
+  const suffix = req.url === "/" ? "" : req.url;
+  return `${base}/explorer/api${suffix}`;
+}
+
+async function proxyExplorerApi(req, res) {
+  const targetUrl = explorerApiUrl(req);
+  if (!targetUrl) {
+    return res.status(404).json({ error: "explorer_api_not_configured" });
+  }
+
+  const audience = process.env.EXPLORER_API_AUDIENCE || process.env.EXPLORER_API_URL;
+  const client = await getIdTokenClient(audience);
+  const iapUser = req.iapUser || {};
+  const response = await client.request({
+    url: targetUrl,
+    method: req.method,
+    data: ["GET", "HEAD"].includes(req.method) ? undefined : req.body,
+    headers: {
+      "content-type": "application/json",
+      "x-chm-caller-service-account": process.env.CHM_SERVICE_ACCOUNT_EMAIL || "",
+      "x-chm-user-email": iapUser.email || "",
+      "x-chm-user-subject": iapUser.subject || "",
+    },
+    validateStatus: () => true,
+  });
+
+  res.status(response.status);
+  const contentType = response.headers?.["content-type"];
+  if (contentType) {
+    res.type(String(contentType));
+  }
+
+  return res.send(response.data);
+}
+
 function createApp(options = {}) {
   const app = express();
 
   app.disable("x-powered-by");
   app.set("trust proxy", true);
   app.use(helmet());
+  app.use(express.json({ limit: "2mb" }));
   app.use(requireIap(options));
+
+  app.use("/api/explorer", async (req, res) => {
+    try {
+      await proxyExplorerApi(req, res);
+    } catch (error) {
+      console.warn("Explorer API proxy failed", { message: error.message });
+      res.status(502).json({ error: "explorer_api_proxy_failed" });
+    }
+  });
 
   app.get("/", (_req, res) => {
     res.type("html").send(`<!doctype html>

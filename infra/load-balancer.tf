@@ -79,6 +79,15 @@ resource "google_compute_url_map" "chm" {
       paths   = ["/", "/login"]
       service = google_compute_backend_service.chm.id
     }
+
+    dynamic "path_rule" {
+      for_each = var.enable_explorer ? [1] : []
+
+      content {
+        paths   = ["/explorer", "/explorer/*"]
+        service = google_compute_backend_service.explorer[0].id
+      }
+    }
   }
 
   test {
@@ -103,6 +112,26 @@ resource "google_compute_url_map" "chm" {
     host    = var.alternate_domain
     path    = "/login"
     service = google_compute_backend_service.chm.id
+  }
+
+  dynamic "test" {
+    for_each = var.enable_explorer ? [1] : []
+
+    content {
+      host    = var.domain
+      path    = "/explorer"
+      service = google_compute_backend_service.explorer[0].id
+    }
+  }
+
+  dynamic "test" {
+    for_each = var.enable_explorer ? [1] : []
+
+    content {
+      host    = var.domain
+      path    = "/explorer/"
+      service = google_compute_backend_service.explorer[0].id
+    }
   }
 }
 

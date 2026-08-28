@@ -34,6 +34,29 @@ resource "google_cloud_run_v2_service" "chm" {
         value = local.chm_iap_jwt_audience
       }
 
+      env {
+        name  = "CHM_SERVICE_ACCOUNT_EMAIL"
+        value = google_service_account.chm.email
+      }
+
+      dynamic "env" {
+        for_each = local.explorer_api_enabled ? [1] : []
+
+        content {
+          name  = "EXPLORER_API_URL"
+          value = google_cloud_run_v2_service.explorer_api[0].uri
+        }
+      }
+
+      dynamic "env" {
+        for_each = local.explorer_api_enabled ? [1] : []
+
+        content {
+          name  = "EXPLORER_API_AUDIENCE"
+          value = google_cloud_run_v2_service.explorer_api[0].uri
+        }
+      }
+
       resources {
         limits = {
           cpu    = "1"

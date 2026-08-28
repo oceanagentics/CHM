@@ -57,6 +57,29 @@ test("serves a health endpoint", async () => {
   });
 });
 
+test("fails closed in production when IAP audience is missing", () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousIapAudience = process.env.IAP_JWT_AUDIENCE;
+  process.env.NODE_ENV = "production";
+  delete process.env.IAP_JWT_AUDIENCE;
+
+  try {
+    assert.throws(() => createApp(), /IAP_JWT_AUDIENCE is required in production/);
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+
+    if (previousIapAudience === undefined) {
+      delete process.env.IAP_JWT_AUDIENCE;
+    } else {
+      process.env.IAP_JWT_AUDIENCE = previousIapAudience;
+    }
+  }
+});
+
 test("keeps /healthz available when IAP audience is configured", async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/healthz`);
@@ -102,6 +125,15 @@ test("accepts valid Ocean Agentics IAP assertions", async () => {
         sub: "accounts.google.com:123",
       };
     },
+  });
+});
+
+test("returns a clear 404 when Explorer API proxy is not configured", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/explorer/nodes`);
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: "explorer_api_not_configured" });
   });
 });
 

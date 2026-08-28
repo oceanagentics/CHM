@@ -23,6 +23,11 @@ output "cloud_build_service_account" {
   value       = google_service_account.chm_build.email
 }
 
+output "explorer_cloud_build_service_account" {
+  description = "Dedicated service account used by Explorer Cloud Build jobs."
+  value       = google_service_account.explorer_build.email
+}
+
 output "dynadot_dns_record" {
   description = "Manual DNS record to create in Dynadot after the load balancer exists."
   value       = "${var.domain} A ${google_compute_global_address.chm.address}"
@@ -34,4 +39,38 @@ output "dynadot_dns_records" {
     "${var.domain} A ${google_compute_global_address.chm.address}",
     "${var.alternate_domain} A ${google_compute_global_address.chm.address}",
   ]
+}
+
+output "explorer_cloud_run_service" {
+  description = "Explorer Cloud Run service name when Explorer is enabled."
+  value       = var.enable_explorer ? google_cloud_run_v2_service.explorer[0].name : null
+}
+
+output "explorer_api_cloud_run_service" {
+  description = "Private Explorer API Cloud Run service name when enabled."
+  value       = local.explorer_api_enabled ? google_cloud_run_v2_service.explorer_api[0].name : null
+}
+
+output "explorer_migration_service_account" {
+  description = "Dedicated service account for one-off Explorer migration jobs."
+  value       = var.enable_explorer ? google_service_account.explorer_migration[0].email : null
+}
+
+output "cloud_sql_connection_name" {
+  description = "Shared CHM Cloud SQL connection name when Explorer is enabled."
+  value       = var.enable_explorer ? google_sql_database_instance.chm[0].connection_name : null
+}
+
+output "explorer_database" {
+  description = "Explorer PostgreSQL database name when Explorer is enabled."
+  value       = var.enable_explorer ? google_sql_database.explorer[0].name : null
+}
+
+output "explorer_db_password_secrets" {
+  description = "Secret Manager secret IDs for Explorer database credentials."
+  value = var.enable_explorer ? {
+    read      = google_secret_manager_secret.explorer_db_read_password[0].secret_id
+    write     = google_secret_manager_secret.explorer_db_write_password[0].secret_id
+    migration = google_secret_manager_secret.explorer_db_migration_password[0].secret_id
+  } : null
 }
