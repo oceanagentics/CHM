@@ -77,7 +77,7 @@ Legacy public infrastructure cleanup completed on 2026-08-28:
 | CHM-SEC-016 | High | Closed | Legacy public infrastructure existed outside Terraform: terminated VM `chm-network-vm`, attached 30 GB disk, and website bucket `chm-network-public-288836337031` containing old static artifacts including `bootstrap.public.json`. | Completed on 2026-08-28. VM, disk, bucket, and bucket objects were deleted and verified as not found. |
 | CHM-SEC-017 | Medium | Closed | The default VPC had broad enabled firewall rules: `chm-network-allow-web`, `default-allow-icmp`, `default-allow-internal`, `default-allow-rdp`, and `default-allow-ssh`. No active Compute instances or disks remained, but future accidental VMs would have inherited risky access. | Completed on 2026-08-28. All five broad default VPC firewall rules were deleted and verified absent. Consider deleting the default VPC and auto-created subnets later if no future Compute/VPC workloads need them. |
 | CHM-SEC-018 | Low | Closed | Cloud Asset Inventory found stale Network Management connectivity tests `ssh-troubleshoot-1g5pc` and `ssh-troubleshoot-wsqtm`, likely from legacy SSH troubleshooting. They did not expose traffic, but they were unmanaged audit noise. | Completed on 2026-08-28. Both stale connectivity tests were deleted and verified absent. |
-| CHM-SEC-019 | Low | Reviewed; on hold | Cloud Asset Inventory found many enabled Google APIs outside the CHM/Explorer surface. Service-specific checks found no BigQuery datasets, Pub/Sub topics, Pub/Sub subscriptions, Firestore database, Dataform repository, or Dataplex lake. Current CHM and Explorer code/Terraform checks found no need for Analytics Hub, the BigQuery family, Dataform, Dataplex, Datastore, Pub/Sub, Cloud Trace, Container Registry, Network Management, or OS Login. The retained audit logs show recent CHM/Explorer enablement events for Cloud Asset, Cloud Resource Manager, Secret Manager, SQL Admin, and Service Networking, but no recent enablement event for the likely-unused APIs. | API disablement is on hold by decision on 2026-08-28. Revisit before adding new cloud services or when the project moves beyond the current CHM/Explorer scope. Prefer leaving intentional APIs managed in Terraform and avoid `--force` API disables unless a dependency relationship is understood. |
+| CHM-SEC-019 | Low | Approved; blocked without force | Cloud Asset Inventory found many enabled Google APIs outside the CHM/Explorer surface. Service-specific checks found no BigQuery datasets, Pub/Sub topics, Pub/Sub subscriptions, Firestore database, Dataform repository, or Dataplex lake. Current CHM and Explorer code/Terraform checks found no need for Analytics Hub, the BigQuery family, Dataform, Dataplex, Datastore, Pub/Sub, Cloud Trace, Container Registry, Network Management, or OS Login. Disablement of the exact candidate list was approved on 2026-08-28 with the constraint to avoid `--force`. A no-force disable attempt stopped immediately because Service Usage reported `analyticshub.googleapis.com` is depended on by active service `cloudapis.googleapis.com`; no APIs were disabled. `cloudapis.googleapis.com` is a Google Cloud API meta service in the baseline/dependency list. | Do not force-disable the APIs by default. Review the `cloudapis.googleapis.com` dependency before any further disable attempt, and only proceed if the impact is explicitly accepted. Keep intentional APIs managed in Terraform. |
 | CHM-SEC-020 | Medium | Open | Explorer's browser-facing service is protected by load-balancer IAP and restricted Cloud Run ingress, but it does not currently set `IAP_JWT_AUDIENCE`, so Explorer is not performing its own app-level IAP JWT validation. The Explorer backend service ID is now known: `4582439918390522076`. | Apply Terraform with `explorer_iap_backend_service_id=4582439918390522076` so Explorer validates the signed IAP assertion at the app layer. Consider making Ryu fail closed in production when app-level IAP validation is required but the audience is missing. |
 | CHM-SEC-021 | Medium | Completed; verified | Cloud SQL instance `chm` is private-only. Terraform has resource-level `deletion_protection = true` and now sets the Cloud SQL platform flag `settings.deletion_protection_enabled = true`. A live `gcloud sql instances describe chm` check returned `True` on 2026-08-28. Terraform deletion protection blocks Terraform-driven destruction; the Cloud SQL platform flag protects against console/API deletion outside Terraform. | Keep both deletion-protection settings enabled for production. Disable them only as part of an explicit, reviewed teardown. |
 
@@ -116,7 +116,8 @@ they can be safely disabled:
 - `storage-component.googleapis.com`
 - `telemetry.googleapis.com`
 
-Likely unused disable candidates:
+Approved disable candidates, blocked by the `cloudapis.googleapis.com`
+dependency when attempted without `--force`:
 
 - `analyticshub.googleapis.com`
 - `bigquery.googleapis.com`
@@ -141,8 +142,9 @@ Likely unused disable candidates:
    create schema objects, then rerun read/write privilege probes.
 2. Decide whether to enable Explorer app-level IAP JWT validation with backend
    service ID `4582439918390522076`.
-3. Keep likely unused API disablement on hold until the project scope changes or
-   a future cloud review explicitly approves the list.
+3. Resolve the CHM-SEC-019 API dependency block. The candidate list is approved
+   for disablement, but the no-force attempt was blocked by
+   `cloudapis.googleapis.com`; do not force it without a separate decision.
 
 ## Evidence Reviewed
 
@@ -160,3 +162,5 @@ Likely unused disable candidates:
 - Cloud Monitoring email alert receipt on 2026-08-28
 - Cloud SQL deletion-protection apply and verification on 2026-08-28
 - Explorer database check `explorer-db-check-7gpt7` on 2026-08-28
+- No-force CHM-SEC-019 API disable attempt on 2026-08-28; blocked by
+  `cloudapis.googleapis.com` dependency before any API was disabled
