@@ -48,6 +48,8 @@ resource "google_sql_database_instance" "chm" {
       start_time = var.cloud_sql_backup_start_time
     }
 
+    deletion_protection_enabled = true
+
     ip_configuration {
       ipv4_enabled    = false
       private_network = data.google_compute_network.default.id

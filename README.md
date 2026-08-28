@@ -38,21 +38,22 @@ Last verified: August 28, 2026.
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
 - Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
 - Cloud SQL instance: `chm`, database `explorer`
+- Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Load balancer IP: `34.110.145.254`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
 - Managed certificates: `chm-oceanagentics-org-cert`,
   `chm-oceanagentics-com-cert`
 - IAP access: `domain:oceanagentics.com`
-- Alerts: Cloud Monitoring email channel `danny@oceanagentics.com` for IAP
+- Alerts: confirmed Cloud Monitoring email channel `danny@oceanagentics.com` for IAP
   failures, Cloud Run 5xx spikes, IAM policy changes, and service-account key
   creation
 - Terraform state: `gs://chm-network-tfstate-288836337031/chm`
 
 The Cloud Run service is restricted to internal and Cloud Load Balancing ingress,
 so the default `run.app` URL should not bypass IAP. HTTP port 80 redirects to the
-matching HTTPS URL at the load balancer. Cloud Run deletion protection is
-enabled. Public DNS for both hostnames resolves to the load balancer IP, and
-unauthenticated HTTPS requests are intercepted by IAP.
+matching HTTPS URL at the load balancer. Cloud Run and Cloud SQL deletion
+protection are enabled. Public DNS for both hostnames resolves to the load
+balancer IP, and unauthenticated HTTPS requests are intercepted by IAP.
 
 Terraform keeps the Explorer slice behind `enable_explorer=false` by default for
 fresh/bootstrap applies, but the live CHM project currently runs it with

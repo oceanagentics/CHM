@@ -10,7 +10,8 @@ The Explorer slice is gated by `enable_explorer`. The live CHM project currently
 
 ## Current Deployment
 
-Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer and alerting updates on 2026-08-28:
+Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
+alerting, and Cloud SQL deletion-protection updates on 2026-08-28:
 
 - Project: `chm-network`
 - Region: `us-east4`
@@ -18,6 +19,7 @@ Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer and al
 - Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:83f98d262f9a14aef67f9a0f2f626a0e06859a949258ca1887845c7049dfbff8`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
+- Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
 - Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
@@ -28,7 +30,9 @@ Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer and al
 - Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
 - HTTP: port 80 redirects to the matching HTTPS URL
-- Alerts: Cloud Monitoring email channel `danny@oceanagentics.com` with policies for IAP failures, Cloud Run 5xx spikes, IAM policy changes, and service-account key creation
+- Alerts: confirmed Cloud Monitoring email channel `danny@oceanagentics.com`
+  with policies for IAP failures, Cloud Run 5xx spikes, IAM policy changes, and
+  service-account key creation
 
 Terraform currently reports no drift with:
 
@@ -142,12 +146,28 @@ terraform apply \
   -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest>
 ```
 
-After Cloud SQL exists, run the Ryu migration/import against database `explorer` using the migration database credentials from Secret Manager:
+After Cloud SQL exists, run the Explorer schema migration against database
+`explorer` using the migration database credentials from Secret Manager:
 
 ```sh
-cd /Users/danvallentyne/dev/oceanagentics/ryu
-npm --workspace server run migrate:postgres
-npm --workspace server run import:postgres -- --truncate
+gcloud run jobs execute explorer-migrate \
+  --project chm-network \
+  --region us-east4 \
+  --wait
+```
+
+For the initial launch, Explorer was seeded from the SQLite-derived
+`client/dist/bootstrap.public.json` already present in the deployed image.
+Production should keep using Cloud SQL/Postgres and should not run SQLite
+infrastructure.
+
+Verify the database with the read-only check job:
+
+```sh
+gcloud run jobs execute explorer-db-check \
+  --project chm-network \
+  --region us-east4 \
+  --wait
 ```
 
 Expected checks after routing is enabled:

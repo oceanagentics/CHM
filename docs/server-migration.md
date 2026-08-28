@@ -52,7 +52,7 @@ Use one shared domain with path routing:
 - Cloud Build uses the dedicated `chm-build-sa` service account instead of the default Compute service account.
 - Initial Terraform-managed routes are `/` and `/login`.
 - Target Explorer routes are `/explorer` and `/explorer/*`, managed only when `enable_explorer=true`.
-- The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema, and SQLite-to-PostgreSQL import tooling.
+- The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema migrations, and Postgres seed handling.
 
 ## CHM Owns
 
