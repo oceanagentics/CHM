@@ -82,9 +82,9 @@ variable "explorer_api_image" {
 }
 
 variable "explorer_iap_backend_service_id" {
-  description = "Numeric Explorer backend service ID used for Explorer app-level IAP JWT validation after the backend exists."
+  description = "Numeric Explorer backend service ID used for Explorer app-level IAP JWT validation. Leave empty only during the first Explorer bootstrap before the backend exists."
   type        = string
-  default     = ""
+  default     = "4582439918390522076"
 }
 
 variable "cloud_sql_tier" {

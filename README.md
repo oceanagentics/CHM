@@ -7,8 +7,8 @@ and loader for apps served from `chm.oceanagentics.org` and
 
 Explorer lives under `/explorer`. Terraform keeps the Explorer slice gated by
 `enable_explorer`, and the current live project has that slice applied with a
-built Explorer image. Treat Explorer as security-gated until the remaining
-database and private API checks are complete.
+built Explorer image, database role hardening, private API access controls, and
+app-level IAP JWT validation.
 
 ## What Exists Today
 
@@ -20,9 +20,9 @@ The current CHM app is a minimal Node.js and Express portal shell.
 - `/healthz` returns `{ "status": "ok" }` for Cloud Run startup probes.
 - `/explorer` routes to the Explorer backend behind IAP.
 
-The app validates Google IAP signed JWT assertions for app routes, requires
-Ocean Agentics Workspace users, sends security headers with Helmet, and runs as a
-non-root user in the container.
+The app validates Google IAP signed JWT assertions for app routes, Explorer is
+configured to do the same, Ocean Agentics Workspace users are required, security
+headers are sent with Helmet, and containers run as non-root users.
 
 ## What Is Running
 
@@ -36,7 +36,9 @@ Last verified: August 28, 2026.
 - Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:83f98d262f9a14aef67f9a0f2f626a0e06859a949258ca1887845c7049dfbff8`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
+- Explorer Cloud Run revision: `explorer-00007-8pb`
 - Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
+- Explorer IAP JWT audience: `/projects/288836337031/global/backendServices/4582439918390522076`
 - Cloud SQL instance: `chm`, database `explorer`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Load balancer IP: `34.110.145.254`

@@ -59,10 +59,11 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - DNS is managed manually in Dynadot.
 - Explorer is path-mounted at `/explorer`.
 - Explorer Cloud SQL and Cloud Run resources are gated behind `enable_explorer=false` by default.
+- Explorer app-level IAP JWT validation is enabled with backend service ID `4582439918390522076`.
 
 ## Open Decisions
 
-- Whether Explorer should validate its load-balancer IAP JWT immediately after the Explorer backend service ID is known.
+- None currently.
 
 ## Planned Terraform Shape
 
@@ -132,7 +133,8 @@ After a real Explorer image digest exists, apply with `enable_explorer=true` and
 8. Optional private Cloud Run service `explorer-api` in write/admin API mode.
 9. Serverless NEG and backend service for `explorer`.
 10. IAP access and IAP service-agent invoker permissions for the Explorer backend.
-11. `/explorer` and `/explorer/*` URL-map rules.
+11. App-level IAP JWT validation using `IAP_JWT_AUDIENCE`.
+12. `/explorer` and `/explorer/*` URL-map rules.
 
 ## Explicit URL Map Rules
 

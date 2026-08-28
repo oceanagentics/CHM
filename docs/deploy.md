@@ -11,7 +11,8 @@ The Explorer slice is gated by `enable_explorer`. The live CHM project currently
 ## Current Deployment
 
 Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
-alerting, and Cloud SQL deletion-protection updates on 2026-08-28:
+alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
+on 2026-08-28:
 
 - Project: `chm-network`
 - Region: `us-east4`
@@ -22,10 +23,12 @@ alerting, and Cloud SQL deletion-protection updates on 2026-08-28:
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
+- Explorer Cloud Run revision: `explorer-00007-8pb`
 - Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
-- IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
+- CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
+- Explorer IAP JWT audience: `/projects/288836337031/global/backendServices/4582439918390522076`
 - Load balancer IP: `34.110.145.254`
 - Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
@@ -139,11 +142,13 @@ cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest> \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest>
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest> \
+  -var explorer_iap_backend_service_id=4582439918390522076
 terraform apply \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest> \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest>
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest> \
+  -var explorer_iap_backend_service_id=4582439918390522076
 ```
 
 After Cloud SQL exists, run the Explorer schema migration against database

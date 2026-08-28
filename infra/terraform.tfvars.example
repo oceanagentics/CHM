@@ -3,5 +3,6 @@ chm_image = "us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<image-dige
 alert_email = "danny@oceanagentics.com"
 
 # Enable only after an Explorer image exists and the Cloud SQL cost is approved.
-enable_explorer = false
-explorer_image  = "us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<image-digest>"
+enable_explorer                 = false
+explorer_image                  = "us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<image-digest>"
+explorer_iap_backend_service_id = "4582439918390522076"

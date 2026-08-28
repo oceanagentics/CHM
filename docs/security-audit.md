@@ -15,9 +15,9 @@ Current production scope:
   `chm.oceanagentics.com`.
 - Google IAP protecting CHM application routes for `domain:oceanagentics.com`.
 - Terraform-managed infrastructure in `infra/`.
-- Explorer service accounts, database secrets, Cloud SQL infrastructure, and
-  `/explorer` routing are live; treat Explorer as security-gated until the
-  remaining Explorer checks are complete.
+- Explorer service accounts, database secrets, Cloud SQL infrastructure,
+  `/explorer` routing, database role hardening, private API access controls, and
+  app-level IAP JWT validation are live.
 
 This document records repo and configuration findings. A live Cloud Asset
 Inventory export should be attached or referenced before treating this as a
@@ -31,8 +31,8 @@ balancer, the app validates signed IAP JWT assertions, Terraform pins deployed
 images by digest, Cloud SQL deletion protection is enabled, and Cloud Build uses
 a dedicated service account.
 
-The main remaining work is focused: decide whether to enable Explorer app-level
-IAP JWT validation and resolve the approved-but-blocked unused API cleanup.
+The main remaining work is focused: resolve the approved-but-blocked unused API
+cleanup and keep manual DNS drift visible.
 
 Legacy public infrastructure cleanup completed on 2026-08-28:
 
@@ -55,6 +55,9 @@ Legacy public infrastructure cleanup completed on 2026-08-28:
 - Enabled Cloud SQL platform deletion protection for instance `chm`.
 - Tightened Explorer database privileges so only `explorer_migration` can create
   schema objects.
+- Enabled Explorer app-level IAP JWT validation by setting
+  `IAP_JWT_AUDIENCE=/projects/288836337031/global/backendServices/4582439918390522076`
+  on Cloud Run revision `explorer-00007-8pb`.
 
 ## Findings
 
@@ -79,7 +82,7 @@ Legacy public infrastructure cleanup completed on 2026-08-28:
 | CHM-SEC-017 | Medium | Closed | The default VPC had broad enabled firewall rules: `chm-network-allow-web`, `default-allow-icmp`, `default-allow-internal`, `default-allow-rdp`, and `default-allow-ssh`. No active Compute instances or disks remained, but future accidental VMs would have inherited risky access. | Completed on 2026-08-28. All five broad default VPC firewall rules were deleted and verified absent. Consider deleting the default VPC and auto-created subnets later if no future Compute/VPC workloads need them. |
 | CHM-SEC-018 | Low | Closed | Cloud Asset Inventory found stale Network Management connectivity tests `ssh-troubleshoot-1g5pc` and `ssh-troubleshoot-wsqtm`, likely from legacy SSH troubleshooting. They did not expose traffic, but they were unmanaged audit noise. | Completed on 2026-08-28. Both stale connectivity tests were deleted and verified absent. |
 | CHM-SEC-019 | Low | Approved; blocked without force | Cloud Asset Inventory found many enabled Google APIs outside the CHM/Explorer surface. Service-specific checks found no BigQuery datasets, Pub/Sub topics, Pub/Sub subscriptions, Firestore database, Dataform repository, or Dataplex lake. Current CHM and Explorer code/Terraform checks found no need for Analytics Hub, the BigQuery family, Dataform, Dataplex, Datastore, Pub/Sub, Cloud Trace, Container Registry, Network Management, or OS Login. Disablement of the exact candidate list was approved on 2026-08-28 with the constraint to avoid `--force`. A no-force disable attempt stopped immediately because Service Usage reported `analyticshub.googleapis.com` is depended on by active service `cloudapis.googleapis.com`; no APIs were disabled. `cloudapis.googleapis.com` is a Google Cloud API meta service in the baseline/dependency list. | Do not force-disable the APIs by default. Review the `cloudapis.googleapis.com` dependency before any further disable attempt, and only proceed if the impact is explicitly accepted. Keep intentional APIs managed in Terraform. |
-| CHM-SEC-020 | Medium | Open | Explorer's browser-facing service is protected by load-balancer IAP and restricted Cloud Run ingress, but it does not currently set `IAP_JWT_AUDIENCE`, so Explorer is not performing its own app-level IAP JWT validation. The Explorer backend service ID is now known: `4582439918390522076`. | Apply Terraform with `explorer_iap_backend_service_id=4582439918390522076` so Explorer validates the signed IAP assertion at the app layer. Consider making Ryu fail closed in production when app-level IAP validation is required but the audience is missing. |
+| CHM-SEC-020 | Medium | Completed; verified | Explorer's browser-facing service is protected by load-balancer IAP and restricted Cloud Run ingress. Terraform now sets `IAP_JWT_AUDIENCE` to `/projects/288836337031/global/backendServices/4582439918390522076`, so Explorer performs app-level validation of the signed IAP assertion when requests reach the app. Live verification on 2026-08-28 showed backend service `explorer-web-backend` has ID `4582439918390522076` with IAP enabled, Cloud Run revision `explorer-00007-8pb` serves 100% traffic with the audience env var set, and unauthenticated `/explorer` requests are redirected by IAP before reaching Explorer. | Keep the Explorer backend service ID in Terraform. If `explorer-web-backend` is recreated, update `explorer_iap_backend_service_id` and re-apply Terraform. |
 | CHM-SEC-021 | Medium | Completed; verified | Cloud SQL instance `chm` is private-only. Terraform has resource-level `deletion_protection = true` and now sets the Cloud SQL platform flag `settings.deletion_protection_enabled = true`. A live `gcloud sql instances describe chm` check returned `True` on 2026-08-28. Terraform deletion protection blocks Terraform-driven destruction; the Cloud SQL platform flag protects against console/API deletion outside Terraform. | Keep both deletion-protection settings enabled for production. Disable them only as part of an explicit, reviewed teardown. |
 
 ## Enabled API Review
@@ -139,11 +142,11 @@ dependency when attempted without `--force`:
 
 ## Recommended Next Actions
 
-1. Decide whether to enable Explorer app-level IAP JWT validation with backend
-   service ID `4582439918390522076`.
-2. Resolve the CHM-SEC-019 API dependency block. The candidate list is approved
+1. Resolve the CHM-SEC-019 API dependency block. The candidate list is approved
    for disablement, but the no-force attempt was blocked by
    `cloudapis.googleapis.com`; do not force it without a separate decision.
+2. Keep CHM-SEC-015 DNS drift visible because DNS is intentionally managed
+   manually in Dynadot.
 
 ## Evidence Reviewed
 
@@ -169,3 +172,7 @@ dependency when attempted without `--force`:
   `explorer-priv-fix-20260828-zcl96`,
   `explorer-priv-fix-20260828-6hfws`, and
   `explorer-priv-fix-20260828-wj97t`
+- Explorer app-level IAP JWT validation apply on 2026-08-28; verified by
+  `gcloud run services describe explorer`,
+  `gcloud compute backend-services describe explorer-web-backend`, and an
+  unauthenticated `/explorer` IAP redirect smoke test
