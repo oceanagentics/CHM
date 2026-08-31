@@ -46,12 +46,12 @@ Last verified: August 31, 2026.
   enabled and `deletion_policy = "ABANDON"`
 - Explorer Cloud Run services: public `explorer`, IAP-protected
   `explorer-admin`, and private `explorer-api`
-- Explorer source commit: `c1fea0b`
-- Explorer public Cloud Run revision: `explorer-00012-xxd`
-- Explorer admin Cloud Run revision: `explorer-admin-00002-sjn`
-- Explorer API Cloud Run revision: `explorer-api-00011-9j2`
-- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:a3bb4e4a8cdb71f0bc1c4f22603513b636f1c8e3c470eb5809370172384695c5`
-- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:31f7b839620a149b30579ca9170e77e777a6f1b5559cd9d57e817f792dd90df2`
+- Explorer source commit: `4fac03e`
+- Explorer public Cloud Run revision: `explorer-00013-6c6`
+- Explorer admin Cloud Run revision: `explorer-admin-00003-n7c`
+- Explorer API Cloud Run revision: `explorer-api-00012-v62`
+- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:01b8723c4532b5798bc87ebae4361ae70e17057d3f20b5055ca76de9b3cb842a`
+- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:5426e7dba0a8124e81e53ddeebb2ce3d3620ce0a3249c693982ba73188b56fed`
 - Explorer admin IAP JWT audience: `/projects/288836337031/global/backendServices/5570063593656309274`
 - Cloud SQL instance: `chm`, database `explorer`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
