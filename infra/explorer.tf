@@ -23,12 +23,12 @@ resource "google_service_account" "explorer_api" {
   depends_on = [google_project_service.required]
 }
 
-resource "google_service_account" "explorer_migration" {
+resource "google_service_account" "explorer_schema_admin" {
   count = var.enable_explorer ? 1 : 0
 
   project      = var.project_id
-  account_id   = "explorer-migration-sa"
-  display_name = "Explorer migration Cloud Run job service account"
+  account_id   = "explorer-schema-admin-sa"
+  display_name = "Explorer schema admin service account"
 
   depends_on = [google_project_service.required]
 }
@@ -67,11 +67,11 @@ resource "google_secret_manager_secret" "explorer_db_write_password" {
   depends_on = [google_project_service.required]
 }
 
-resource "google_secret_manager_secret" "explorer_db_migration_password" {
+resource "google_secret_manager_secret" "explorer_db_schema_admin_password" {
   count = var.enable_explorer ? 1 : 0
 
   project   = var.project_id
-  secret_id = "explorer-db-migration-password"
+  secret_id = "explorer-db-schema-admin-password"
 
   replication {
     auto {}
@@ -94,11 +94,11 @@ resource "google_secret_manager_secret_version" "explorer_db_write_password" {
   secret_data = random_password.explorer_write[0].result
 }
 
-resource "google_secret_manager_secret_version" "explorer_db_migration_password" {
+resource "google_secret_manager_secret_version" "explorer_db_schema_admin_password" {
   count = var.enable_explorer ? 1 : 0
 
-  secret      = google_secret_manager_secret.explorer_db_migration_password[0].id
-  secret_data = random_password.explorer_migration[0].result
+  secret      = google_secret_manager_secret.explorer_db_schema_admin_password[0].id
+  secret_data = random_password.explorer_schema_admin[0].result
 }
 
 resource "google_project_iam_member" "explorer_cloud_sql_client" {
@@ -117,12 +117,12 @@ resource "google_project_iam_member" "explorer_api_cloud_sql_client" {
   member  = google_service_account.explorer_api[0].member
 }
 
-resource "google_project_iam_member" "explorer_migration_cloud_sql_client" {
+resource "google_project_iam_member" "explorer_schema_admin_cloud_sql_client" {
   count = var.enable_explorer ? 1 : 0
 
   project = var.project_id
   role    = "roles/cloudsql.client"
-  member  = google_service_account.explorer_migration[0].member
+  member  = google_service_account.explorer_schema_admin[0].member
 }
 
 resource "google_secret_manager_secret_iam_member" "explorer_db_read_password_access" {
@@ -143,13 +143,13 @@ resource "google_secret_manager_secret_iam_member" "explorer_db_write_password_a
   member    = google_service_account.explorer_api[0].member
 }
 
-resource "google_secret_manager_secret_iam_member" "explorer_db_migration_password_access" {
+resource "google_secret_manager_secret_iam_member" "explorer_db_schema_admin_password_access" {
   count = var.enable_explorer ? 1 : 0
 
   project   = var.project_id
-  secret_id = google_secret_manager_secret.explorer_db_migration_password[0].secret_id
+  secret_id = google_secret_manager_secret.explorer_db_schema_admin_password[0].secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = google_service_account.explorer_migration[0].member
+  member    = google_service_account.explorer_schema_admin[0].member
 }
 
 resource "google_artifact_registry_repository_iam_member" "explorer_cloud_build_artifact_writer" {

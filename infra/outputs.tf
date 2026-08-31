@@ -51,9 +51,9 @@ output "explorer_api_cloud_run_service" {
   value       = local.explorer_api_enabled ? google_cloud_run_v2_service.explorer_api[0].name : null
 }
 
-output "explorer_migration_service_account" {
-  description = "Dedicated service account for one-off Explorer migration jobs."
-  value       = var.enable_explorer ? google_service_account.explorer_migration[0].email : null
+output "explorer_schema_admin_service_account" {
+  description = "Dedicated service account for Explorer schema administration."
+  value       = var.enable_explorer ? google_service_account.explorer_schema_admin[0].email : null
 }
 
 output "cloud_sql_connection_name" {
@@ -69,8 +69,8 @@ output "explorer_database" {
 output "explorer_db_password_secrets" {
   description = "Secret Manager secret IDs for Explorer database credentials."
   value = var.enable_explorer ? {
-    read      = google_secret_manager_secret.explorer_db_read_password[0].secret_id
-    write     = google_secret_manager_secret.explorer_db_write_password[0].secret_id
-    migration = google_secret_manager_secret.explorer_db_migration_password[0].secret_id
+    read         = google_secret_manager_secret.explorer_db_read_password[0].secret_id
+    schema_admin = google_secret_manager_secret.explorer_db_schema_admin_password[0].secret_id
+    write        = google_secret_manager_secret.explorer_db_write_password[0].secret_id
   } : null
 }

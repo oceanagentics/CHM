@@ -35,7 +35,7 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - IAM principal: the identity receiving access. Initial CHM IAP access uses `domain:oceanagentics.com`.
 - Managed certificate: a Google-managed TLS certificate for CHM hostnames.
 - HTTP-to-HTTPS redirect: a small HTTP load balancer frontend that shares the HTTPS load balancer IP and redirects port 80 requests to HTTPS before they reach CHM.
-- Deletion protection: a Cloud Run setting that makes Terraform fail before deleting the CHM service unless the protection is deliberately removed first.
+- Deletion protection: a Cloud Run or Cloud SQL setting that makes deletion fail unless protection is deliberately removed first.
 
 ## Locked Decisions
 
@@ -60,16 +60,20 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - Explorer is path-mounted at `/explorer`.
 - Explorer Cloud SQL and Cloud Run resources are gated behind `enable_explorer=false` by default.
 - Explorer app-level IAP JWT validation is enabled with backend service ID `4582439918390522076`.
+- CHM uses Direct VPC egress with `all-traffic` so it can call internal-only
+  CHM app API services.
+- The default `us-east4` subnet is imported into Terraform with Private Google
+  Access enabled and `deletion_policy = "ABANDON"`.
 
 ## Open Decisions
 
 - None currently.
 
-## Planned Terraform Shape
+## Terraform File Shape
 
-Keep Terraform under an `infra/` directory once implementation begins.
+Terraform lives under `infra/`.
 
-Suggested files:
+Key files:
 
 - `infra/versions.tf`: Terraform and provider version constraints.
 - `infra/providers.tf`: Google provider project and region configuration.
@@ -79,6 +83,8 @@ Suggested files:
 - `infra/artifact-registry.tf`: Artifact Registry Docker repository for CHM images.
 - `infra/cloud-build.tf`: IAM bindings needed for Cloud Build image publishing.
 - `infra/service-accounts.tf`: CHM runtime and build service accounts.
+- `infra/network.tf`: imported default `us-east4` subnet settings needed for
+  internal Cloud Run service-to-service calls.
 - `infra/cloud-sql.tf`: gated shared Cloud SQL instance `chm`, `explorer` database, and Explorer database users.
 - `infra/cloud-run.tf`: CHM Cloud Run service and ingress settings.
 - `infra/explorer.tf`: gated Explorer service accounts, database secrets, Cloud Run services, serverless NEG, backend service, and IAM bindings.
@@ -90,30 +96,33 @@ Suggested files:
 
 ## First Resource Slice
 
-The first executable Terraform should define only the minimum shared platform needed to test CHM routing:
+For a fresh/bootstrap replay, the first executable Terraform slice should define only the minimum shared platform needed to test CHM routing:
 
 1. Required Google Cloud APIs, including Cloud Run, Cloud Build, Compute, IAP, IAM, Artifact Registry, Cloud Logging, and Cloud Storage.
 2. Artifact Registry repository `chm-apps`.
 3. Cloud Build service account `chm-build-sa` and IAM needed to read submitted source, write logs, and write the CHM image.
 4. Service account `chm-sa`.
 5. Cloud Run service `chm`.
-6. Serverless NEG for `chm`.
-7. Backend service for `chm` with IAP enabled.
-8. Managed certificate for `chm.oceanagentics.org`.
-9. Global external IP address.
-10. Global external HTTPS Application Load Balancer pieces required by Google Cloud.
-11. Explicit URL map rules for `/` and `/login`.
-12. IAP service identity and Cloud Run invoker access for IAP.
-13. IAP access for `domain:oceanagentics.com`.
-14. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
-15. Output for the load balancer IP to enter manually in Dynadot.
-16. Basic alerting for IAP failures, Cloud Run 5xx spikes, IAM changes, and service-account key creation.
+6. Imported default `us-east4` subnet with Private Google Access enabled.
+7. Serverless NEG for `chm`.
+8. Backend service for `chm` with IAP enabled.
+9. Managed certificate for `chm.oceanagentics.org`.
+10. Global external IP address.
+11. Global external HTTPS Application Load Balancer pieces required by Google Cloud.
+12. Explicit URL map rules for `/` and `/login`.
+13. IAP service identity and Cloud Run invoker access for IAP.
+14. IAP access for `domain:oceanagentics.com`.
+15. Direct Cloud Run ingress restricted to internal and Cloud Load Balancing.
+16. Output for the load balancer IP to enter manually in Dynadot.
+17. Basic alerting for IAP failures, Cloud Run 5xx spikes, IAM changes, and service-account key creation.
 
 The `/explorer` rules are part of the target URL map and are now gated behind `enable_explorer=true`. Do not silently route `/explorer` to CHM.
 
 ## Explorer Resource Slice
 
-The next Terraform apply should first create the non-billable Explorer build identity so the Ryu image can be built:
+The live project now has the Explorer slice applied. For a fresh/bootstrap
+replay, first create the non-billable Explorer build identity so the Ryu image
+can be built:
 
 1. Service account `explorer-build-sa`.
 2. Artifact Registry writer access on `chm-apps`.
@@ -121,20 +130,23 @@ The next Terraform apply should first create the non-billable Explorer build ide
 4. Cloud Logging writer access.
 5. Service account user grant for `user:danny@oceanagentics.com`.
 
-After a real Explorer image digest exists, apply with `enable_explorer=true` and `explorer_image=<digest>` to create:
+After a real Explorer image digest exists, apply with `enable_explorer=true` and
+`explorer_image=<digest>` to create:
 
 1. Shared Cloud SQL PostgreSQL instance `chm`.
 2. PostgreSQL database `explorer`.
-3. Generated passwords for `explorer_read`, `explorer_write`, and `explorer_migration`.
+3. Generated passwords for `explorer_read`, `explorer_write`, and `explorer_schema_admin`.
 4. Secret Manager secrets for the generated database passwords.
-5. Service accounts `explorer-sa` and optional `explorer-api-sa`.
+5. Service accounts `explorer-sa`, `explorer-schema-admin-sa`, and optional `explorer-api-sa`.
 6. Cloud SQL Client grants for the Explorer service accounts.
 7. Cloud Run service `explorer` in read-only public mode.
-8. Optional private Cloud Run service `explorer-api` in write/admin API mode.
+8. Optional private Cloud Run service `explorer-api` for the narrow browser-review API.
 9. Serverless NEG and backend service for `explorer`.
 10. IAP access and IAP service-agent invoker permissions for the Explorer backend.
 11. App-level IAP JWT validation using `IAP_JWT_AUDIENCE`.
 12. `/explorer` and `/explorer/*` URL-map rules.
+13. CHM VPC `all-traffic` egress through the Private Google Access-enabled
+    subnet so CHM can reach internal-only `explorer-api`.
 
 ## Explicit URL Map Rules
 

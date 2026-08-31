@@ -5,6 +5,7 @@ const { GoogleAuth, OAuth2Client } = require("google-auth-library");
 const IAP_HEADER = "x-goog-iap-jwt-assertion";
 const IAP_ISSUER = "https://cloud.google.com/iap";
 const OCEAN_AGENTICS_DOMAIN = "oceanagentics.com";
+const EXPLORER_REVIEW_ROUTE = /^\/nodes\/[^/]+\/review\/?$/;
 const iapClient = new OAuth2Client();
 const serviceAuth = new GoogleAuth();
 
@@ -112,6 +113,10 @@ function explorerApiUrl(req) {
   return `${base}/explorer/api${suffix}`;
 }
 
+function isAllowedExplorerApiRequest(req) {
+  return req.method === "PATCH" && EXPLORER_REVIEW_ROUTE.test(req.path);
+}
+
 async function proxyExplorerApi(req, res) {
   const targetUrl = explorerApiUrl(req);
   if (!targetUrl) {
@@ -153,6 +158,10 @@ function createApp(options = {}) {
   app.use(requireIap(options));
 
   app.use("/api/explorer", async (req, res) => {
+    if (!isAllowedExplorerApiRequest(req)) {
+      return res.status(404).json({ error: "not_found" });
+    }
+
     try {
       await proxyExplorerApi(req, res);
     } catch (error) {

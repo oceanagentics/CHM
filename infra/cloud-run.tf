@@ -12,6 +12,15 @@ resource "google_cloud_run_v2_service" "chm" {
   template {
     service_account = google_service_account.chm.email
 
+    vpc_access {
+      egress = "ALL_TRAFFIC"
+
+      network_interfaces {
+        network    = "default"
+        subnetwork = google_compute_subnetwork.default_us_east4.name
+      }
+    }
+
     scaling {
       min_instance_count = 1
       max_instance_count = 3

@@ -128,9 +128,22 @@ test("accepts valid Ocean Agentics IAP assertions", async () => {
   });
 });
 
-test("returns a clear 404 when Explorer API proxy is not configured", async () => {
+test("does not proxy unsupported Explorer API routes", async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/explorer/nodes`);
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: "not_found" });
+  });
+});
+
+test("returns a clear 404 when Explorer review API proxy is not configured", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/explorer/nodes/node-1/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewState: "human_reviewed" }),
+    });
 
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: "explorer_api_not_configured" });

@@ -84,7 +84,7 @@ resource "random_password" "explorer_write" {
   special = false
 }
 
-resource "random_password" "explorer_migration" {
+resource "random_password" "explorer_schema_admin" {
   count = var.enable_explorer ? 1 : 0
 
   length  = 32
@@ -109,11 +109,11 @@ resource "google_sql_user" "explorer_write" {
   password = random_password.explorer_write[0].result
 }
 
-resource "google_sql_user" "explorer_migration" {
+resource "google_sql_user" "explorer_schema_admin" {
   count = var.enable_explorer ? 1 : 0
 
   project  = var.project_id
-  name     = "explorer_migration"
+  name     = "explorer_schema_admin"
   instance = google_sql_database_instance.chm[0].name
-  password = random_password.explorer_migration[0].result
+  password = random_password.explorer_schema_admin[0].result
 }

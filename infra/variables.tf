@@ -64,7 +64,7 @@ variable "enable_explorer" {
 }
 
 variable "enable_explorer_api" {
-  description = "Create the private Explorer write/admin API service when Explorer is enabled."
+  description = "Create the private Explorer browser-review API service when Explorer is enabled."
   type        = bool
   default     = true
 }

@@ -19,6 +19,8 @@ The current CHM app is a minimal Node.js and Express portal shell.
   authenticated users to `/`.
 - `/healthz` returns `{ "status": "ok" }` for Cloud Run startup probes.
 - `/explorer` routes to the Explorer backend behind IAP.
+- `PATCH /api/explorer/nodes/:id/review` is the only CHM browser-write proxy
+  to the private Explorer API.
 
 The app validates Google IAP signed JWT assertions for app routes, Explorer is
 configured to do the same, Ocean Agentics Workspace users are required, security
@@ -26,18 +28,23 @@ headers are sent with Helmet, and containers run as non-root users.
 
 ## What Is Running
 
-Last verified: August 28, 2026.
+Last verified: August 31, 2026.
 
 - Google Cloud project: `chm-network`
 - Primary region: `us-east4`
 - Cloud Run service: `chm`
 - Runtime service account: `chm-sa@chm-network.iam.gserviceaccount.com`
 - Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:83f98d262f9a14aef67f9a0f2f626a0e06859a949258ca1887845c7049dfbff8`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5`
+- Cloud Run revision: `chm-00008-vx8`
 - Scaling: 1 minimum instance, 3 maximum instances
+- Direct VPC egress: default `us-east4` subnet, `all-traffic`
+- Default `us-east4` subnet: Terraform-imported with Private Google Access
+  enabled and `deletion_policy = "ABANDON"`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer Cloud Run revision: `explorer-00007-8pb`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
+- Explorer Cloud Run revision: `explorer-00009-75l`
+- Explorer API Cloud Run revision: `explorer-api-00008-mhc`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e`
 - Explorer IAP JWT audience: `/projects/288836337031/global/backendServices/4582439918390522076`
 - Cloud SQL instance: `chm`, database `explorer`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
@@ -60,6 +67,13 @@ balancer IP, and unauthenticated HTTPS requests are intercepted by IAP.
 Terraform keeps the Explorer slice behind `enable_explorer=false` by default for
 fresh/bootstrap applies, but the live CHM project currently runs it with
 `enable_explorer=true`.
+
+CHM and Explorer now narrow the Explorer browser write surface to the node
+review path above. Explorer's details UI shows record depth and review state to
+all users, and authenticated/author builds provide the review-state dropdown
+plus reviewer-note form. A private API probe verified the narrow review write
+and denial cases; the remaining manual check is the signed-in browser form
+click-through.
 
 ## Development
 

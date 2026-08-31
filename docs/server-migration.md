@@ -11,16 +11,34 @@ Explorer, currently developed in the Ryu repo, remains the graph application and
 ## Current Status
 
 The first CHM slice was deployed on 2026-08-26. The Explorer infrastructure
-slice was applied on 2026-08-28 and remains security-gated before being treated
-as production-ready.
+slice was applied on 2026-08-28. The review UI/API and CHM-to-internal-API VPC
+fix were deployed on 2026-08-31. The live services now have IAP JWT validation,
+database role separation, private API caller restrictions, authenticated
+Explorer graph data loading, and a backend-verified narrow review write path.
+Explorer shows record depth and review state to all users, and exposes an
+authenticated/author review form for review state and reviewer note updates.
 
 - Cloud Run service `chm` is deployed in `us-east4`.
 - Terraform state is stored in `gs://chm-network-tfstate-288836337031/chm`.
 - The HTTPS load balancer IP is `34.110.145.254`.
+- The default `us-east4` subnet is imported into Terraform with Private Google
+  Access enabled and `deletion_policy = "ABANDON"`.
 - Dynadot DNS has `A` records for `chm.oceanagentics.org` and `chm.oceanagentics.com` pointing to `34.110.145.254`.
 - Public HTTPS requests to both hostnames reach Google IAP.
 - `/explorer` routing is active behind IAP when Terraform is applied with `enable_explorer=true`.
-- Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, Cloud Run `explorer`, optional private `explorer-api`, and `/explorer` URL-map routing.
+- Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, Cloud Run `explorer`, optional private `explorer-api`, `/explorer` URL-map routing, and CHM Direct VPC egress for the private API call path.
+- Current CHM deployment: Cloud Run revision `chm-00008-vx8`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5`.
+- Current Explorer deployment: Ryu commit `6a03086`, Cloud Run revision
+  `explorer-00009-75l`, private API revision `explorer-api-00008-mhc`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e`.
+- Authenticated browser verification confirmed Explorer loads real graph data.
+- A temporary Cloud Run probe running as `chm-sa` verified the private review API
+  can update `fishbase` as `danny@oceanagentics.com` and rejects extra fields,
+  missing user context, wrong caller headers, and the absent general node write
+  route.
+- Unmanaged Explorer Cloud Run setup/check jobs were deleted after launch
+  setup and verification.
 
 ## Target Routes
 
@@ -52,7 +70,7 @@ Use one shared domain with path routing:
 - Cloud Build uses the dedicated `chm-build-sa` service account instead of the default Compute service account.
 - Initial Terraform-managed routes are `/` and `/login`.
 - Target Explorer routes are `/explorer` and `/explorer/*`, managed only when `enable_explorer=true`.
-- The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema migrations, and Postgres seed handling.
+- The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema reference, and Postgres seed handling.
 
 ## CHM Owns
 
@@ -69,6 +87,8 @@ Use one shared domain with path routing:
 - IAP signed JWT validation in CHM.
 - Trusted user-context forwarding from CHM to private app services.
 - Shared service-account, Secret Manager, Artifact Registry, Cloud SQL, Cloud Storage, logging, and deployment conventions.
+- Shared VPC/subnet settings needed for private Cloud Run service-to-service
+  calls.
 
 CHM should not own Explorer graph logic, Explorer validation, Explorer database schema decisions, or broad Explorer write credentials.
 
@@ -81,9 +101,12 @@ Explorer/Ryu should provide CHM with:
 - Optional built Explorer API image digest for `explorer_api_image`; this defaults to `explorer_image` when empty.
 - Health check path: `/healthz`.
 - Required environment variables, including `APP_BASE_PATH=/explorer`, `RYU_DATA_BACKEND=postgres`, and `RYU_MODE=public|api`.
-- Required secrets and database roles: `explorer_read`, `explorer_write`, and `explorer_migration`.
-- Private API surface through `explorer-api`, if write/admin routes are split from the browser-facing service.
-- Smoke test commands for `/explorer`, read-only access, authorized writes, and unauthorized denial.
+- Required secrets and database roles: `explorer_read`, `explorer_write`, and `explorer_schema_admin`.
+- Private browser-review API surface through `explorer-api`: `PATCH /explorer/api/nodes/:id/review`.
+- Browser review calls through CHM as `PATCH /api/explorer/nodes/:id/review`.
+- Smoke test commands for `/explorer`, read-only access, authorized review writes, and unauthorized denial.
+- Network requirement: for an internal-only `explorer-api`, CHM must use Direct
+  VPC egress through a subnet with Private Google Access enabled.
 
 Explorer remains responsible for enforcing its own validation and database role separation even when CHM has already authenticated the user through IAP.
 
@@ -91,11 +114,14 @@ Explorer remains responsible for enforcing its own validation and database role 
 
 - Do not enable IAP both on a load-balancer backend service and directly on the Cloud Run service behind it.
 - Restrict load-balanced Cloud Run services to internal and Cloud Load Balancing ingress so default `run.app` URLs cannot bypass IAP.
+- Keep CHM on VPC `all-traffic` egress while it calls internal-only app
+  services by `run.app` URI.
 - Do not grant public unauthenticated invoke access to `chm`.
-- Do not expose raw Explorer write/admin endpoints directly to browsers.
+- Do not expose raw Explorer general-write or admin endpoints directly to browsers; CHM should only proxy `PATCH /api/explorer/nodes/:id/review`.
 - Do not share database users or runtime secrets across apps.
-- Do not let public services use writer or migration credentials.
+- Do not let public services use writer or schema-admin credentials.
 - Do not enable Cloud CDN on IAP-protected backend services.
+- Do not keep standing manual Cloud Run jobs for completed launch setup work.
 
 ## First CHM Slice
 

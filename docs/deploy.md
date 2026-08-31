@@ -2,9 +2,10 @@
 
 ## Current Scope
 
-The first deployment publishes the minimal CHM app to Cloud Run behind the IAP-protected HTTPS load balancer.
+The current deployment runs the CHM portal and Explorer slice on Cloud Run
+behind the IAP-protected HTTPS load balancer.
 
-Terraform manages the Artifact Registry repository, Cloud Run service, load balancer, certificate, URL map, and IAP access. DNS remains manual in Dynadot.
+Terraform manages the Artifact Registry repository, Cloud Run services, load balancer, certificates, URL map, IAP access, Cloud SQL, app service accounts, database secrets, and monitoring. DNS remains manual in Dynadot.
 
 The Explorer slice is gated by `enable_explorer`. The live CHM project currently runs that slice; keep it disabled only for fresh/bootstrap applies until an Explorer image exists and Cloud SQL cost is approved.
 
@@ -12,19 +13,25 @@ The Explorer slice is gated by `enable_explorer`. The live CHM project currently
 
 Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
 alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
-on 2026-08-28:
+on 2026-08-28; review UI/API and CHM-to-internal-API VPC fix on 2026-08-31:
 
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:83f98d262f9a14aef67f9a0f2f626a0e06859a949258ca1887845c7049dfbff8`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5`
+- CHM Cloud Run revision: `chm-00008-vx8`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
+- CHM Direct VPC egress: default `us-east4` subnet, `all-traffic`
+- Default `us-east4` subnet: Terraform-imported with Private Google Access
+  enabled and `deletion_policy = "ABANDON"`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer Cloud Run revision: `explorer-00007-8pb`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c`
+- Explorer source commit: `6a03086`
+- Explorer Cloud Run revision: `explorer-00009-75l`
+- Explorer API Cloud Run revision: `explorer-api-00008-mhc`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -36,15 +43,19 @@ on 2026-08-28:
 - Alerts: confirmed Cloud Monitoring email channel `danny@oceanagentics.com`
   with policies for IAP failures, Cloud Run 5xx spikes, IAM policy changes, and
   service-account key creation
+- Unmanaged Explorer Cloud Run setup/check jobs: deleted after launch setup and
+  verification completed
 
-Terraform currently reports no drift with:
+Terraform reported no drift on 2026-08-31 with the currently deployed image
+digests:
 
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
-  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:83f98d262f9a14aef67f9a0f2f626a0e06859a949258ca1887845c7049dfbff8 \
+  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5 \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:f1ad37c1b953e225683021644307a337f3adab0e999f6328f541ed3dcf00013c
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e \
+  -var explorer_iap_backend_service_id=4582439918390522076
 ```
 
 Public DNS now points both CHM hostnames at the load balancer. Unauthenticated HTTPS requests should go to the Google IAP login flow, and signed-in `@oceanagentics.com` users should reach the CHM app.
@@ -151,29 +162,21 @@ terraform apply \
   -var explorer_iap_backend_service_id=4582439918390522076
 ```
 
-After Cloud SQL exists, run the Explorer schema migration against database
-`explorer` using the migration database credentials from Secret Manager:
+The initial Explorer database setup and seed were completed during launch. The
+unmanaged Cloud Run setup/check jobs used for that work have been deleted. Keep
+the production Postgres shape in the Explorer repo SQL and docs; design the next
+database-change runner only when a real schema change is needed.
 
-```sh
-gcloud run jobs execute explorer-migrate \
-  --project chm-network \
-  --region us-east4 \
-  --wait
-```
+The current review UI/API update is deployed:
 
-For the initial launch, Explorer was seeded from the SQLite-derived
-`client/dist/bootstrap.public.json` already present in the deployed image.
-Production should keep using Cloud SQL/Postgres and should not run SQLite
-infrastructure.
+- Explorer image: includes the details-panel review section and private
+  `PATCH /explorer/api/nodes/:id/review` mutation.
+- CHM image: proxies only `PATCH /api/explorer/nodes/:id/review` to the private
+  Explorer API.
 
-Verify the database with the read-only check job:
-
-```sh
-gcloud run jobs execute explorer-db-check \
-  --project chm-network \
-  --region us-east4 \
-  --wait
-```
+The CHM service needs Direct VPC egress with `all-traffic`, and the default
+`us-east4` subnet needs Private Google Access enabled, so CHM service-to-service
+requests to the internal-only `explorer-api` are treated as internal traffic.
 
 Expected checks after routing is enabled:
 
@@ -183,3 +186,12 @@ curl -I https://chm.oceanagentics.com/explorer
 ```
 
 Unauthenticated requests should be redirected by IAP before reaching Explorer.
+Authenticated browser loading of real Explorer graph data has been confirmed.
+The private backend review path was verified on 2026-08-31 by a temporary Cloud
+Run probe running as `chm-sa`: it updated `fishbase` as
+`danny@oceanagentics.com`, rejected unsupported fields, rejected missing user
+context, rejected the wrong caller header, and confirmed the general node write
+route is absent. The remaining browser-only check is selecting a node in a
+signed-in CHM/IAP session, editing review state or reviewer note, and confirming
+the UI shows the persisted `reviewState`, `reviewerNote`, `reviewer`, and
+`lastReviewed` fields.
