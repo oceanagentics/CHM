@@ -80,6 +80,20 @@ resource "google_compute_url_map" "chm" {
       service = google_compute_backend_service.chm.id
     }
 
+    path_rule {
+      paths   = ["/api/explorer", "/api/explorer/*"]
+      service = google_compute_backend_service.chm.id
+    }
+
+    dynamic "path_rule" {
+      for_each = var.enable_explorer ? [1] : []
+
+      content {
+        paths   = ["/explorer/admin", "/explorer/admin/*"]
+        service = google_compute_backend_service.explorer_admin[0].id
+      }
+    }
+
     dynamic "path_rule" {
       for_each = var.enable_explorer ? [1] : []
 
@@ -111,6 +125,32 @@ resource "google_compute_url_map" "chm" {
   test {
     host    = var.alternate_domain
     path    = "/login"
+    service = google_compute_backend_service.chm.id
+  }
+
+  dynamic "test" {
+    for_each = var.enable_explorer ? [1] : []
+
+    content {
+      host    = var.domain
+      path    = "/explorer/admin"
+      service = google_compute_backend_service.explorer_admin[0].id
+    }
+  }
+
+  dynamic "test" {
+    for_each = var.enable_explorer ? [1] : []
+
+    content {
+      host    = var.domain
+      path    = "/explorer/admin/"
+      service = google_compute_backend_service.explorer_admin[0].id
+    }
+  }
+
+  test {
+    host    = var.domain
+    path    = "/api/explorer/nodes/fishbase/review"
     service = google_compute_backend_service.chm.id
   }
 

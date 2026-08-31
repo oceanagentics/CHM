@@ -42,8 +42,13 @@ output "dynadot_dns_records" {
 }
 
 output "explorer_cloud_run_service" {
-  description = "Explorer Cloud Run service name when Explorer is enabled."
+  description = "Public read-only Explorer Cloud Run service name when Explorer is enabled."
   value       = var.enable_explorer ? google_cloud_run_v2_service.explorer[0].name : null
+}
+
+output "explorer_admin_cloud_run_service" {
+  description = "IAP-protected Explorer admin Cloud Run service name when Explorer is enabled."
+  value       = var.enable_explorer ? google_cloud_run_v2_service.explorer_admin[0].name : null
 }
 
 output "explorer_api_cloud_run_service" {

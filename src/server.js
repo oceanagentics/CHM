@@ -232,7 +232,7 @@ function createApp(options = {}) {
   <main>
     <h1>CHM</h1>
     <p>Authenticated portal for Ocean Agentics CHM applications.</p>
-    <a href="/explorer">Open Explorer</a>
+    <a href="/explorer/admin">Open Explorer</a>
   </main>
 </body>
 </html>`);

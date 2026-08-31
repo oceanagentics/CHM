@@ -35,7 +35,7 @@ test("serves the CHM portal", async () => {
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
     assert.match(body, /<h1>CHM<\/h1>/);
-    assert.match(body, /href="\/explorer"/);
+    assert.match(body, /href="\/explorer\/admin"/);
   });
 });
 

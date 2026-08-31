@@ -70,7 +70,13 @@ variable "enable_explorer_api" {
 }
 
 variable "explorer_image" {
-  description = "Container image for the browser-facing Explorer Cloud Run service. Required when enable_explorer is true."
+  description = "Container image for the public read-only Explorer Cloud Run service. Required when enable_explorer is true."
+  type        = string
+  default     = ""
+}
+
+variable "explorer_admin_image" {
+  description = "Container image for the IAP-protected Explorer admin Cloud Run service. Required when enable_explorer is true."
   type        = string
   default     = ""
 }
@@ -82,9 +88,15 @@ variable "explorer_api_image" {
 }
 
 variable "explorer_iap_backend_service_id" {
-  description = "Numeric Explorer backend service ID used for Explorer app-level IAP JWT validation. Leave empty only during the first Explorer bootstrap before the backend exists."
+  description = "Deprecated: use explorer_admin_iap_backend_service_id for Explorer app-level IAP JWT validation."
   type        = string
   default     = "4582439918390522076"
+}
+
+variable "explorer_admin_iap_backend_service_id" {
+  description = "Numeric Explorer admin backend service ID used for app-level IAP JWT validation. Leave empty only during the first admin bootstrap before the backend exists."
+  type        = string
+  default     = ""
 }
 
 variable "cloud_sql_tier" {
@@ -115,6 +127,18 @@ variable "explorer_max_instance_count" {
   description = "Maximum instances for the browser-facing Explorer service."
   type        = number
   default     = 3
+}
+
+variable "explorer_admin_min_instance_count" {
+  description = "Minimum instances for the IAP-protected Explorer admin service."
+  type        = number
+  default     = 0
+}
+
+variable "explorer_admin_max_instance_count" {
+  description = "Maximum instances for the IAP-protected Explorer admin service."
+  type        = number
+  default     = 2
 }
 
 variable "explorer_api_min_instance_count" {

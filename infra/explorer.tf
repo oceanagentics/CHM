@@ -181,11 +181,12 @@ resource "google_service_account_iam_member" "explorer_cloud_build_submitter" {
 resource "google_cloud_run_v2_service" "explorer" {
   count = var.enable_explorer ? 1 : 0
 
-  project             = var.project_id
-  name                = "explorer"
-  location            = var.region
-  deletion_protection = true
-  ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  project              = var.project_id
+  name                 = "explorer"
+  location             = var.region
+  deletion_protection  = true
+  ingress              = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  invoker_iam_disabled = true
 
   template {
     service_account = google_service_account.explorer[0].email
@@ -237,15 +238,6 @@ resource "google_cloud_run_v2_service" "explorer" {
       env {
         name  = "RYU_MODE"
         value = "public"
-      }
-
-      dynamic "env" {
-        for_each = var.explorer_iap_backend_service_id != "" ? [1] : []
-
-        content {
-          name  = "IAP_JWT_AUDIENCE"
-          value = "/projects/${var.project_number}/global/backendServices/${var.explorer_iap_backend_service_id}"
-        }
       }
 
       env {
@@ -304,6 +296,144 @@ resource "google_cloud_run_v2_service" "explorer" {
     precondition {
       condition     = var.explorer_image != ""
       error_message = "explorer_image must be set when enable_explorer is true."
+    }
+  }
+
+  depends_on = [
+    google_artifact_registry_repository.chm_apps,
+    google_project_iam_member.explorer_cloud_sql_client,
+    google_secret_manager_secret_version.explorer_db_read_password,
+    google_sql_database.explorer,
+    google_sql_user.explorer_read,
+  ]
+}
+
+resource "google_cloud_run_v2_service" "explorer_admin" {
+  count = var.enable_explorer ? 1 : 0
+
+  project             = var.project_id
+  name                = "explorer-admin"
+  location            = var.region
+  deletion_protection = true
+  ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+
+  template {
+    service_account = google_service_account.explorer[0].email
+
+    vpc_access {
+      egress = "PRIVATE_RANGES_ONLY"
+
+      network_interfaces {
+        network    = "default"
+        subnetwork = "default"
+      }
+    }
+
+    scaling {
+      min_instance_count = var.explorer_admin_min_instance_count
+      max_instance_count = var.explorer_admin_max_instance_count
+    }
+
+    volumes {
+      name = "cloudsql"
+
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.chm[0].connection_name]
+      }
+    }
+
+    containers {
+      image = var.explorer_admin_image
+
+      ports {
+        container_port = 8080
+      }
+
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
+
+      env {
+        name  = "APP_BASE_PATH"
+        value = "/explorer/admin"
+      }
+
+      env {
+        name  = "RYU_DATA_BACKEND"
+        value = "postgres"
+      }
+
+      env {
+        name  = "RYU_MODE"
+        value = "public"
+      }
+
+      dynamic "env" {
+        for_each = var.explorer_admin_iap_backend_service_id != "" ? [1] : []
+
+        content {
+          name  = "IAP_JWT_AUDIENCE"
+          value = "/projects/${var.project_number}/global/backendServices/${var.explorer_admin_iap_backend_service_id}"
+        }
+      }
+
+      env {
+        name  = "PGHOST"
+        value = "/cloudsql/${google_sql_database_instance.chm[0].connection_name}"
+      }
+
+      env {
+        name  = "PGDATABASE"
+        value = google_sql_database.explorer[0].name
+      }
+
+      env {
+        name  = "PGUSER"
+        value = google_sql_user.explorer_read[0].name
+      }
+
+      env {
+        name = "PGPASSWORD"
+
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.explorer_db_read_password[0].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+
+      startup_probe {
+        initial_delay_seconds = 5
+        period_seconds        = 5
+        timeout_seconds       = 2
+        failure_threshold     = 12
+
+        http_get {
+          path = "/healthz"
+          port = 8080
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.explorer_admin_image != ""
+      error_message = "explorer_admin_image must be set when enable_explorer is true."
     }
   }
 
@@ -477,6 +607,39 @@ resource "google_compute_backend_service" "explorer" {
     group = google_compute_region_network_endpoint_group.explorer[0].id
   }
 
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "explorer_admin" {
+  count = var.enable_explorer ? 1 : 0
+
+  project               = var.project_id
+  name                  = "explorer-admin-web-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+
+  cloud_run {
+    service = google_cloud_run_v2_service.explorer_admin[0].name
+  }
+}
+
+resource "google_compute_backend_service" "explorer_admin" {
+  count = var.enable_explorer ? 1 : 0
+
+  project               = var.project_id
+  name                  = "explorer-admin-web-backend"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  protocol              = "HTTP"
+  enable_cdn            = false
+  timeout_sec           = 30
+
+  backend {
+    group = google_compute_region_network_endpoint_group.explorer_admin[0].id
+  }
+
   iap {
     enabled = true
   }
@@ -487,21 +650,21 @@ resource "google_compute_backend_service" "explorer" {
   }
 }
 
-resource "google_cloud_run_v2_service_iam_member" "explorer_iap_invoker" {
+resource "google_cloud_run_v2_service_iam_member" "explorer_admin_iap_invoker" {
   count = var.enable_explorer ? 1 : 0
 
   project  = var.project_id
-  location = google_cloud_run_v2_service.explorer[0].location
-  name     = google_cloud_run_v2_service.explorer[0].name
+  location = google_cloud_run_v2_service.explorer_admin[0].location
+  name     = google_cloud_run_v2_service.explorer_admin[0].name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_project_service_identity.iap.email}"
 }
 
-resource "google_iap_web_backend_service_iam_member" "explorer_domain" {
+resource "google_iap_web_backend_service_iam_member" "explorer_admin_domain" {
   count = var.enable_explorer ? 1 : 0
 
   project             = var.project_id
-  web_backend_service = google_compute_backend_service.explorer[0].name
+  web_backend_service = google_compute_backend_service.explorer_admin[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = var.iap_member
 }
