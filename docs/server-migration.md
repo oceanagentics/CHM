@@ -12,11 +12,12 @@ Explorer, currently developed in the Ryu repo, remains the graph application and
 
 The first CHM slice was deployed on 2026-08-26. The Explorer infrastructure
 slice was applied on 2026-08-28. The review UI/API and CHM-to-internal-API VPC
-fix were deployed on 2026-08-31. The live services now have IAP JWT validation,
-database role separation, private API caller restrictions, authenticated
-Explorer graph data loading, and a backend-verified narrow review write path.
-Explorer shows record depth and review state to all users, and exposes an
-authenticated/author review form for review state and reviewer note updates.
+fix and the public/admin Explorer path split were deployed on 2026-08-31. The
+live services now have IAP JWT validation on protected routes, database role
+separation, private API caller restrictions, public read-only Explorer graph
+loading, and a backend-verified narrow review write path. Explorer shows record
+depth and review state to all users, and exposes an authenticated/author review
+form for review state and reviewer note updates at `/explorer/admin`.
 
 - Cloud Run service `chm` is deployed in `us-east4`.
 - Terraform state is stored in `gs://chm-network-tfstate-288836337031/chm`.
@@ -24,14 +25,17 @@ authenticated/author review form for review state and reviewer note updates.
 - The default `us-east4` subnet is imported into Terraform with Private Google
   Access enabled and `deletion_policy = "ABANDON"`.
 - Dynadot DNS has `A` records for `chm.oceanagentics.org` and `chm.oceanagentics.com` pointing to `34.110.145.254`.
-- Public HTTPS requests to both hostnames reach Google IAP.
-- `/explorer` routing is active behind IAP when Terraform is applied with `enable_explorer=true`.
-- Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, Cloud Run `explorer`, optional private `explorer-api`, `/explorer` URL-map routing, and CHM Direct VPC egress for the private API call path.
-- Current CHM deployment: Cloud Run revision `chm-00009-wkz`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3`.
-- Current Explorer deployment: Ryu commit `a44fef4`, Cloud Run revision
-  `explorer-00011-kxh`, private API revision `explorer-api-00010-spd`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba`.
+- Public HTTPS requests to `/` and `/explorer/admin` reach Google IAP.
+- `/explorer` routing is public read-only when Terraform is applied with
+  `enable_explorer=true`.
+- Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, public Cloud Run `explorer`, IAP-protected Cloud Run `explorer-admin`, optional private `explorer-api`, `/explorer` and `/explorer/admin` URL-map routing, and CHM Direct VPC egress for the private API call path.
+- Current CHM deployment: Cloud Run revision `chm-00010-65w`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:5456cece6520be75630a47a0aa913d9485593ef9a8da6ff040efe29a313e04c1`.
+- Current Explorer deployment: Ryu commit `c1fea0b`, public revision
+  `explorer-00012-xxd`, admin revision `explorer-admin-00002-sjn`, private API
+  revision `explorer-api-00011-9j2`, public image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:a3bb4e4a8cdb71f0bc1c4f22603513b636f1c8e3c470eb5809370172384695c5`, and admin image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:31f7b839620a149b30579ca9170e77e777a6f1b5559cd9d57e817f792dd90df2`.
 - Authenticated browser verification confirmed Explorer loads real graph data.
 - A temporary Cloud Run probe running as `chm-sa` verified the private review API
   can update `fishbase` as `danny@oceanagentics.com` and rejects extra fields,
@@ -46,8 +50,10 @@ Use one shared domain with path routing:
 
 - `https://chm.oceanagentics.org/` routes to CHM.
 - `https://chm.oceanagentics.org/login` routes to CHM and should trigger or forward to the IAP login flow, not implement a separate CHM password screen.
-- `https://chm.oceanagentics.org/explorer` routes to Explorer.
-- `https://chm.oceanagentics.com/`, `/login`, and `/explorer` route to the same CHM-managed load balancer and explicit app backends.
+- `https://chm.oceanagentics.org/explorer` routes to public read-only Explorer.
+- `https://chm.oceanagentics.org/explorer/admin` routes to IAP-protected Explorer admin.
+- `https://chm.oceanagentics.org/api/explorer/...` routes to CHM's IAP-protected Explorer API proxy.
+- `https://chm.oceanagentics.com/`, `/login`, `/explorer`, and `/explorer/admin` route to the same CHM-managed load balancer and explicit app backends.
 - Future CHM apps use their own path prefixes, for example `/otherapp1` and `/otherapp2`.
 
 `/` and `/login` are IAP-protected. The first implementation should treat IAP as the shared Google login boundary and avoid building a separate user-auth system.
@@ -69,8 +75,10 @@ Use one shared domain with path routing:
 - Cloud Run deletion protection is enabled for the CHM service.
 - Cloud Build uses the dedicated `chm-build-sa` service account instead of the default Compute service account.
 - Initial Terraform-managed routes are `/` and `/login`.
-- Target Explorer routes are `/explorer` and `/explorer/*`, managed only when `enable_explorer=true`.
-- The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema reference, and Postgres seed handling.
+- Target Explorer routes are `/explorer`, `/explorer/*`, `/explorer/admin`,
+  `/explorer/admin/*`, `/api/explorer`, and `/api/explorer/*`, managed only
+  when `enable_explorer=true`.
+- The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer` and `/explorer/admin`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema reference, and Postgres seed handling.
 
 ## CHM Owns
 
@@ -97,14 +105,16 @@ CHM should not own Explorer graph logic, Explorer validation, Explorer database 
 Explorer/Ryu should provide CHM with:
 
 - Route prefix: `/explorer`.
-- Built Explorer image digest for `explorer_image`.
+- Admin route prefix: `/explorer/admin`.
+- Built public Explorer image digest for `explorer_image`.
+- Built admin Explorer image digest for `explorer_admin_image`.
 - Optional built Explorer API image digest for `explorer_api_image`; this defaults to `explorer_image` when empty.
 - Health check path: `/healthz`.
-- Required environment variables, including `APP_BASE_PATH=/explorer`, `RYU_DATA_BACKEND=postgres`, and `RYU_MODE=public|api`.
+- Required environment variables, including `APP_BASE_PATH=/explorer|/explorer/admin`, `RYU_DATA_BACKEND=postgres`, and `RYU_MODE=public|api`.
 - Required secrets and database roles: `explorer_read`, `explorer_write`, and `explorer_schema_admin`.
 - Private browser-review API surface through `explorer-api`: `PATCH /explorer/api/nodes/:id/review`.
 - Browser review calls through CHM as `PATCH /api/explorer/nodes/:id/review`.
-- Smoke test commands for `/explorer`, read-only access, authorized review writes, and unauthorized denial.
+- Smoke test commands for `/explorer`, `/explorer/admin`, read-only access, authorized review writes, and unauthorized denial.
 - Network requirement: for an internal-only `explorer-api`, CHM must use Direct
   VPC egress through a subnet with Private Google Access enabled.
 
@@ -116,8 +126,8 @@ Explorer remains responsible for enforcing its own validation and database role 
 - Restrict load-balanced Cloud Run services to internal and Cloud Load Balancing ingress so default `run.app` URLs cannot bypass IAP.
 - Keep CHM on VPC `all-traffic` egress while it calls internal-only app
   services by `run.app` URI.
-- Do not grant public unauthenticated invoke access to `chm`.
-- Do not expose raw Explorer general-write or admin endpoints directly to browsers; CHM should only proxy `PATCH /api/explorer/nodes/:id/review`.
+- Do not grant public unauthenticated invoke access to `chm` or `explorer-admin`.
+- Do not expose raw Explorer general-write endpoints directly to browsers; CHM should only proxy `PATCH /api/explorer/nodes/:id/review`.
 - Do not share database users or runtime secrets across apps.
 - Do not let public services use writer or schema-admin credentials.
 - Do not enable Cloud CDN on IAP-protected backend services.
@@ -133,4 +143,6 @@ Explorer remains responsible for enforcing its own validation and database role 
 6. Output the load balancer IP so the `chm.oceanagentics.org` DNS `A` record can be created manually in Dynadot.
 7. Restrict direct Cloud Run ingress for load-balanced services.
 8. Grant only the needed invoker permissions between CHM and IAP.
-9. Add `/explorer` routing by applying the gated Explorer Terraform slice with `enable_explorer=true` and a real Explorer image.
+9. Add `/explorer`, `/explorer/admin`, and `/api/explorer` routing by applying
+   the gated Explorer Terraform slice with `enable_explorer=true` and real
+   public/admin Explorer image digests.

@@ -3,23 +3,25 @@
 ## Current Scope
 
 The current deployment runs the CHM portal and Explorer slice on Cloud Run
-behind the IAP-protected HTTPS load balancer.
+behind the shared HTTPS load balancer. CHM and Explorer admin are IAP-protected;
+public Explorer at `/explorer` is read-only and unauthenticated.
 
 Terraform manages the Artifact Registry repository, Cloud Run services, load balancer, certificates, URL map, IAP access, Cloud SQL, app service accounts, database secrets, and monitoring. DNS remains manual in Dynadot.
 
-The Explorer slice is gated by `enable_explorer`. The live CHM project currently runs that slice; keep it disabled only for fresh/bootstrap applies until an Explorer image exists and Cloud SQL cost is approved.
+The Explorer slice is gated by `enable_explorer`. The live CHM project currently runs that slice; keep it disabled only for fresh/bootstrap applies until Explorer public/admin images exist and Cloud SQL cost is approved.
 
 ## Current Deployment
 
 Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
 alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
-on 2026-08-28; review UI/API and CHM-to-internal-API VPC fix on 2026-08-31:
+on 2026-08-28; review UI/API, CHM-to-internal-API VPC fix, and public/admin
+Explorer path split on 2026-08-31:
 
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3`
-- CHM Cloud Run revision: `chm-00009-wkz`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:5456cece6520be75630a47a0aa913d9485593ef9a8da6ff040efe29a313e04c1`
+- CHM Cloud Run revision: `chm-00010-65w`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
 - CHM Direct VPC egress: default `us-east4` subnet, `all-traffic`
@@ -27,15 +29,18 @@ on 2026-08-28; review UI/API and CHM-to-internal-API VPC fix on 2026-08-31:
   enabled and `deletion_policy = "ABANDON"`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
-- Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer source commit: `a44fef4`
-- Explorer Cloud Run revision: `explorer-00011-kxh`
-- Explorer API Cloud Run revision: `explorer-api-00010-spd`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba`
+- Explorer Cloud Run services: public `explorer`, IAP-protected
+  `explorer-admin`, and private `explorer-api`
+- Explorer source commit: `c1fea0b`
+- Explorer public Cloud Run revision: `explorer-00012-xxd`
+- Explorer admin Cloud Run revision: `explorer-admin-00002-sjn`
+- Explorer API Cloud Run revision: `explorer-api-00011-9j2`
+- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:a3bb4e4a8cdb71f0bc1c4f22603513b636f1c8e3c470eb5809370172384695c5`
+- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:31f7b839620a149b30579ca9170e77e777a6f1b5559cd9d57e817f792dd90df2`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
-- Explorer IAP JWT audience: `/projects/288836337031/global/backendServices/4582439918390522076`
+- Explorer admin IAP JWT audience: `/projects/288836337031/global/backendServices/5570063593656309274`
 - Load balancer IP: `34.110.145.254`
 - Managed certificates: `chm-oceanagentics-org-cert`, `chm-oceanagentics-com-cert`
 - Hostnames: `chm.oceanagentics.org`, `chm.oceanagentics.com`
@@ -52,13 +57,17 @@ digests:
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
-  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3 \
+  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:5456cece6520be75630a47a0aa913d9485593ef9a8da6ff040efe29a313e04c1 \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba \
-  -var explorer_iap_backend_service_id=4582439918390522076
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:a3bb4e4a8cdb71f0bc1c4f22603513b636f1c8e3c470eb5809370172384695c5 \
+  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:31f7b839620a149b30579ca9170e77e777a6f1b5559cd9d57e817f792dd90df2 \
+  -var explorer_admin_iap_backend_service_id=5570063593656309274
 ```
 
-Public DNS now points both CHM hostnames at the load balancer. Unauthenticated HTTPS requests should go to the Google IAP login flow, and signed-in `@oceanagentics.com` users should reach the CHM app.
+Public DNS now points both CHM hostnames at the load balancer. Unauthenticated
+HTTPS requests to `/` and `/explorer/admin` should go to the Google IAP login
+flow. Unauthenticated `/explorer` should serve the public read-only Explorer
+view.
 
 ## One-Time Bootstrap
 
@@ -135,14 +144,19 @@ terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@s
 terraform apply -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest>
 ```
 
-Then build the Explorer image from the Ryu repo:
+Then build the public and admin Explorer images from the Ryu repo:
 
 ```sh
 cd /Users/danvallentyne/dev/oceanagentics/ryu
 gcloud builds submit \
   --region us-east4 \
   --config cloudbuild.yaml \
-  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer:$(git rev-parse --short HEAD) \
+  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public:$(git rev-parse --short HEAD),_APP_BASE_PATH=/explorer,_VITE_APP_MODE=public,_VITE_CAN_REVIEW_NODES=false,_VITE_REVIEW_API_BASE_PATH=/api/explorer \
+  .
+gcloud builds submit \
+  --region us-east4 \
+  --config cloudbuild.yaml \
+  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin:$(git rev-parse --short HEAD),_APP_BASE_PATH=/explorer/admin,_VITE_APP_MODE=author,_VITE_CAN_REVIEW_NODES=true,_VITE_REVIEW_API_BASE_PATH=/api/explorer \
   .
 ```
 
@@ -153,14 +167,21 @@ cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest> \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest> \
-  -var explorer_iap_backend_service_id=4582439918390522076
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:<explorer-public-image-digest> \
+  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:<explorer-admin-image-digest> \
+  -var explorer_admin_iap_backend_service_id=<explorer-admin-web-backend-id>
 terraform apply \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest> \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:<explorer-image-digest> \
-  -var explorer_iap_backend_service_id=4582439918390522076
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:<explorer-public-image-digest> \
+  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:<explorer-admin-image-digest> \
+  -var explorer_admin_iap_backend_service_id=<explorer-admin-web-backend-id>
 ```
+
+If `explorer-admin-web-backend` does not exist yet, run the first apply with
+`explorer_admin_iap_backend_service_id=` to create it, read the numeric backend
+ID, then immediately apply again with that ID so `explorer-admin` validates the
+signed IAP JWT assertion in the app.
 
 The initial Explorer database setup and seed were completed during launch. The
 unmanaged Cloud Run setup/check jobs used for that work have been deleted. Keep
@@ -169,7 +190,10 @@ database-change runner only when a real schema change is needed.
 
 The current review UI/API update is deployed:
 
-- Explorer image: includes the details-panel review section and private
+- Public Explorer image: serves `/explorer` in read-only mode and redacts
+  reviewer metadata, raw review JSON, route targets, and source local paths.
+- Explorer admin image: serves `/explorer/admin` in author mode behind IAP.
+- Private Explorer API image: serves the narrow
   `PATCH /explorer/api/nodes/:id/review` mutation.
 - CHM image: proxies only `PATCH /api/explorer/nodes/:id/review` to the private
   Explorer API.
@@ -183,10 +207,13 @@ Expected checks after routing is enabled:
 ```sh
 curl -I https://chm.oceanagentics.org/explorer
 curl -I https://chm.oceanagentics.com/explorer
+curl -I https://chm.oceanagentics.org/explorer/admin
 ```
 
-Unauthenticated requests should be redirected by IAP before reaching Explorer.
-Authenticated browser loading of real Explorer graph data has been confirmed.
+Unauthenticated `/explorer` requests should return the public Explorer page
+without IAP. Unauthenticated `/explorer/admin` requests should be redirected by
+IAP before reaching Explorer admin. Authenticated browser loading of real
+Explorer graph data has been confirmed.
 The private backend review path was verified on 2026-08-31 by a temporary Cloud
 Run probe running as `chm-sa` against the clean committed image: it updated
 `fishbase` as `danny@oceanagentics.com`, rejected unsupported fields, rejected

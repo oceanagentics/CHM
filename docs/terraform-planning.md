@@ -57,9 +57,12 @@ The initial executable Terraform stack lives in `infra/`. Review `terraform plan
 - Minimal CHM app routes: `/`, `/login`, and `/healthz`.
 - Minimal CHM app stack: Node.js and Express.
 - DNS is managed manually in Dynadot.
-- Explorer is path-mounted at `/explorer`.
+- Explorer public view is path-mounted at `/explorer`.
+- Explorer admin view is path-mounted at `/explorer/admin`.
 - Explorer Cloud SQL and Cloud Run resources are gated behind `enable_explorer=false` by default.
-- Explorer app-level IAP JWT validation is enabled with backend service ID `4582439918390522076`.
+- Explorer public backend has IAP explicitly disabled and uses a read-only public build.
+- Explorer admin app-level IAP JWT validation is enabled with backend service ID
+  `5570063593656309274`.
 - CHM uses Direct VPC egress with `all-traffic` so it can call internal-only
   CHM app API services.
 - The default `us-east4` subnet is imported into Terraform with Private Google
@@ -130,8 +133,9 @@ can be built:
 4. Cloud Logging writer access.
 5. Service account user grant for `user:danny@oceanagentics.com`.
 
-After a real Explorer image digest exists, apply with `enable_explorer=true` and
-`explorer_image=<digest>` to create:
+After real Explorer public and admin image digests exist, apply with
+`enable_explorer=true`, `explorer_image=<public-digest>`, and
+`explorer_admin_image=<admin-digest>` to create:
 
 1. Shared Cloud SQL PostgreSQL instance `chm`.
 2. PostgreSQL database `explorer`.
@@ -139,14 +143,21 @@ After a real Explorer image digest exists, apply with `enable_explorer=true` and
 4. Secret Manager secrets for the generated database passwords.
 5. Service accounts `explorer-sa`, `explorer-schema-admin-sa`, and optional `explorer-api-sa`.
 6. Cloud SQL Client grants for the Explorer service accounts.
-7. Cloud Run service `explorer` in read-only public mode.
-8. Optional private Cloud Run service `explorer-api` for the narrow browser-review API.
-9. Serverless NEG and backend service for `explorer`.
-10. IAP access and IAP service-agent invoker permissions for the Explorer backend.
-11. App-level IAP JWT validation using `IAP_JWT_AUDIENCE`.
-12. `/explorer` and `/explorer/*` URL-map rules.
-13. CHM VPC `all-traffic` egress through the Private Google Access-enabled
+7. Public Cloud Run service `explorer` in read-only mode.
+8. IAP-protected Cloud Run service `explorer-admin` in author/read mode.
+9. Optional private Cloud Run service `explorer-api` for the narrow browser-review API.
+10. Serverless NEGs and backend services for `explorer` and `explorer-admin`.
+11. Explicit IAP disabled state for the public Explorer backend.
+12. IAP access and IAP service-agent invoker permissions for the Explorer admin backend.
+13. App-level IAP JWT validation on Explorer admin using `IAP_JWT_AUDIENCE`.
+14. `/explorer`, `/explorer/admin`, and `/api/explorer` URL-map rules.
+15. CHM VPC `all-traffic` egress through the Private Google Access-enabled
     subnet so CHM can reach internal-only `explorer-api`.
+
+If `explorer-admin-web-backend` does not exist yet, leave
+`explorer_admin_iap_backend_service_id` empty for the first apply, read the new
+backend ID, and immediately apply again with the ID to enable app-level IAP JWT
+validation in `explorer-admin`.
 
 ## Explicit URL Map Rules
 
@@ -156,8 +167,12 @@ Initial routing should be explicit and reviewable:
 | --- | --- | --- |
 | `chm.oceanagentics.org` | `/` | `chm` |
 | `chm.oceanagentics.org` | `/login` | `chm` |
+| `chm.oceanagentics.org` | `/api/explorer` | `chm` |
+| `chm.oceanagentics.org` | `/api/explorer/*` | `chm` |
 | `chm.oceanagentics.com` | `/` | `chm` |
 | `chm.oceanagentics.com` | `/login` | `chm` |
+| `chm.oceanagentics.com` | `/api/explorer` | `chm` |
+| `chm.oceanagentics.com` | `/api/explorer/*` | `chm` |
 
 The URL map default backend should route to CHM so unmatched CHM-domain requests get a CHM-owned response.
 
@@ -167,8 +182,12 @@ Target Explorer routing remains explicit and gated:
 | --- | --- | --- |
 | `chm.oceanagentics.org` | `/explorer` | `explorer` |
 | `chm.oceanagentics.org` | `/explorer/*` | `explorer` |
+| `chm.oceanagentics.org` | `/explorer/admin` | `explorer-admin` |
+| `chm.oceanagentics.org` | `/explorer/admin/*` | `explorer-admin` |
 | `chm.oceanagentics.com` | `/explorer` | `explorer` |
 | `chm.oceanagentics.com` | `/explorer/*` | `explorer` |
+| `chm.oceanagentics.com` | `/explorer/admin` | `explorer-admin` |
+| `chm.oceanagentics.com` | `/explorer/admin/*` | `explorer-admin` |
 
 ## State Plan
 

@@ -607,6 +607,10 @@ resource "google_compute_backend_service" "explorer" {
     group = google_compute_region_network_endpoint_group.explorer[0].id
   }
 
+  iap {
+    enabled = false
+  }
+
   log_config {
     enable      = true
     sample_rate = 1.0
