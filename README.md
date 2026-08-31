@@ -60,6 +60,8 @@ Last verified: August 31, 2026.
 - Managed certificates: `chm-oceanagentics-org-cert`,
   `chm-oceanagentics-com-cert`
 - IAP access: `domain:oceanagentics.com`
+- CHM admin hint emails: `danny@oceanagentics.com`
+- Admin redirect hint cookie: `chm_admin_hint`
 - Alerts: confirmed Cloud Monitoring email channel `danny@oceanagentics.com` for IAP
   failures, Cloud Run 5xx spikes, IAM policy changes, and service-account key
   creation

@@ -128,6 +128,56 @@ test("accepts valid Ocean Agentics IAP assertions", async () => {
   });
 });
 
+test("sets the admin hint cookie for configured admin users", async () => {
+  const iapAudience = "/projects/288836337031/global/backendServices/1981640158971360804";
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`, {
+      headers: {
+        "x-goog-iap-jwt-assertion": "valid.jwt",
+      },
+    });
+    const setCookie = response.headers.get("set-cookie");
+
+    assert.equal(response.status, 200);
+    assert.match(setCookie, /chm_admin_hint=1/);
+    assert.match(setCookie, /Max-Age=86400/);
+    assert.match(setCookie, /Path=\//);
+    assert.match(setCookie, /SameSite=Lax/);
+  }, {
+    iapAudience,
+    adminHintEmails: ["admin@oceanagentics.com"],
+    validateIapAssertion: async () => ({
+      email: "admin@oceanagentics.com",
+      hd: "oceanagentics.com",
+      sub: "accounts.google.com:789",
+    }),
+  });
+});
+
+test("does not set the admin hint cookie for other authenticated users", async () => {
+  const iapAudience = "/projects/288836337031/global/backendServices/1981640158971360804";
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`, {
+      headers: {
+        "x-goog-iap-jwt-assertion": "valid.jwt",
+      },
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("set-cookie"), null);
+  }, {
+    iapAudience,
+    adminHintEmails: ["admin@oceanagentics.com"],
+    validateIapAssertion: async () => ({
+      email: "person@oceanagentics.com",
+      hd: "oceanagentics.com",
+      sub: "accounts.google.com:101",
+    }),
+  });
+});
+
 test("does not proxy unsupported Explorer API routes", async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/explorer/nodes`);

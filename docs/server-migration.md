@@ -57,6 +57,9 @@ Use one shared domain with path routing:
 - Future CHM apps use their own path prefixes, for example `/otherapp1` and `/otherapp2`.
 
 `/` and `/login` are IAP-protected. The first implementation should treat IAP as the shared Google login boundary and avoid building a separate user-auth system.
+CHM sets the `chm_admin_hint` cookie for emails in `CHM_ADMIN_HINT_EMAILS`.
+Public Explorer uses only that hint to redirect known admins from `/explorer` to
+`/explorer/admin` before mounting the graph.
 
 ## Locked Decisions
 
@@ -72,6 +75,7 @@ Use one shared domain with path routing:
 - `chm.oceanagentics.com` is served as an additional CHM hostname, not redirected.
 - HTTP requests redirect to the same host and path on HTTPS at the load balancer.
 - CHM validates the signed IAP JWT assertion for app routes, except `/healthz` for Cloud Run startup probes.
+- CHM sets the `chm_admin_hint` public redirect cookie for configured admin emails after IAP validation.
 - Cloud Run deletion protection is enabled for the CHM service.
 - Cloud Build uses the dedicated `chm-build-sa` service account instead of the default Compute service account.
 - Initial Terraform-managed routes are `/` and `/login`.

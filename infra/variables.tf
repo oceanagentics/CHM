@@ -57,6 +57,12 @@ variable "alert_email" {
   default     = "danny@oceanagentics.com"
 }
 
+variable "chm_admin_hint_emails" {
+  description = "Authenticated CHM user emails that receive the public Explorer admin redirect hint cookie."
+  type        = list(string)
+  default     = ["danny@oceanagentics.com"]
+}
+
 variable "enable_explorer" {
   description = "Create Explorer Cloud Run, Cloud SQL, and /explorer load-balancer resources."
   type        = bool

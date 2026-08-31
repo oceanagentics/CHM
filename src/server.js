@@ -6,6 +6,8 @@ const IAP_HEADER = "x-goog-iap-jwt-assertion";
 const IAP_ISSUER = "https://cloud.google.com/iap";
 const OCEAN_AGENTICS_DOMAIN = "oceanagentics.com";
 const EXPLORER_REVIEW_ROUTE = /^\/nodes\/[^/]+\/review\/?$/;
+const ADMIN_HINT_COOKIE_NAME = "chm_admin_hint";
+const DEFAULT_ADMIN_HINT_EMAILS = ["danny@oceanagentics.com"];
 const iapClient = new OAuth2Client();
 const serviceAuth = new GoogleAuth();
 
@@ -94,6 +96,43 @@ function requireIap(options = {}) {
   };
 }
 
+function readEmailList(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap(readEmailList);
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function adminHintEmails(options = {}) {
+  const configuredEmails =
+    options.adminHintEmails ?? process.env.CHM_ADMIN_HINT_EMAILS;
+  const emails = readEmailList(configuredEmails);
+  return new Set(emails.length > 0 ? emails : DEFAULT_ADMIN_HINT_EMAILS);
+}
+
+function setAdminHintCookie(adminEmails) {
+  return (req, res, next) => {
+    if (req.iapUser?.email && adminEmails.has(req.iapUser.email)) {
+      res.cookie(ADMIN_HINT_COOKIE_NAME, "1", {
+        maxAge: 24 * 60 * 60 * 1000,
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    next();
+  };
+}
+
 async function getIdTokenClient(audience) {
   if (!idTokenClients.has(audience)) {
     idTokenClients.set(audience, await serviceAuth.getIdTokenClient(audience));
@@ -150,12 +189,14 @@ async function proxyExplorerApi(req, res) {
 
 function createApp(options = {}) {
   const app = express();
+  const hintAdminEmails = adminHintEmails(options);
 
   app.disable("x-powered-by");
   app.set("trust proxy", true);
   app.use(helmet());
   app.use(express.json({ limit: "2mb" }));
   app.use(requireIap(options));
+  app.use(setAdminHintCookie(hintAdminEmails));
 
   app.use("/api/explorer", async (req, res) => {
     if (!isAllowedExplorerApiRequest(req)) {
