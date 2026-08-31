@@ -42,9 +42,9 @@ Last verified: August 31, 2026.
 - Default `us-east4` subnet: Terraform-imported with Private Google Access
   enabled and `deletion_policy = "ABANDON"`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer Cloud Run revision: `explorer-00010-vw6`
-- Explorer API Cloud Run revision: `explorer-api-00009-27n`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777`
+- Explorer Cloud Run revision: `explorer-00011-kxh`
+- Explorer API Cloud Run revision: `explorer-api-00010-spd`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba`
 - Explorer IAP JWT audience: `/projects/288836337031/global/backendServices/4582439918390522076`
 - Cloud SQL instance: `chm`, database `explorer`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled

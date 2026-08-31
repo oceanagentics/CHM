@@ -28,10 +28,10 @@ on 2026-08-28; review UI/API and CHM-to-internal-API VPC fix on 2026-08-31:
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer source commit: `fa36202`
-- Explorer Cloud Run revision: `explorer-00010-vw6`
-- Explorer API Cloud Run revision: `explorer-api-00009-27n`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777`
+- Explorer source commit: `a44fef4`
+- Explorer Cloud Run revision: `explorer-00011-kxh`
+- Explorer API Cloud Run revision: `explorer-api-00010-spd`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -54,7 +54,7 @@ cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3 \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777 \
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba \
   -var explorer_iap_backend_service_id=4582439918390522076
 ```
 

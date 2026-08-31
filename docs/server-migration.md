@@ -29,9 +29,9 @@ authenticated/author review form for review state and reviewer note updates.
 - Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, Cloud Run `explorer`, optional private `explorer-api`, `/explorer` URL-map routing, and CHM Direct VPC egress for the private API call path.
 - Current CHM deployment: Cloud Run revision `chm-00009-wkz`, image
   `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3`.
-- Current Explorer deployment: Ryu commit `fa36202`, Cloud Run revision
-  `explorer-00010-vw6`, private API revision `explorer-api-00009-27n`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777`.
+- Current Explorer deployment: Ryu commit `a44fef4`, Cloud Run revision
+  `explorer-00011-kxh`, private API revision `explorer-api-00010-spd`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:cb1395e8fbf3707089f57367a5e5b3809a5f3a222a6387c729752aaf69e1edba`.
 - Authenticated browser verification confirmed Explorer loads real graph data.
 - A temporary Cloud Run probe running as `chm-sa` verified the private review API
   can update `fishbase` as `danny@oceanagentics.com` and rejects extra fields,
