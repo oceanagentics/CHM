@@ -18,8 +18,8 @@ on 2026-08-28; review UI/API and CHM-to-internal-API VPC fix on 2026-08-31:
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5`
-- CHM Cloud Run revision: `chm-00008-vx8`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3`
+- CHM Cloud Run revision: `chm-00009-wkz`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
 - CHM Direct VPC egress: default `us-east4` subnet, `all-traffic`
@@ -28,10 +28,10 @@ on 2026-08-28; review UI/API and CHM-to-internal-API VPC fix on 2026-08-31:
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer source commit: `6a03086`
-- Explorer Cloud Run revision: `explorer-00009-75l`
-- Explorer API Cloud Run revision: `explorer-api-00008-mhc`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e`
+- Explorer source commit: `fa36202`
+- Explorer Cloud Run revision: `explorer-00010-vw6`
+- Explorer API Cloud Run revision: `explorer-api-00009-27n`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -52,9 +52,9 @@ digests:
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
-  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5 \
+  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3 \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e \
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777 \
   -var explorer_iap_backend_service_id=4582439918390522076
 ```
 
@@ -188,10 +188,10 @@ curl -I https://chm.oceanagentics.com/explorer
 Unauthenticated requests should be redirected by IAP before reaching Explorer.
 Authenticated browser loading of real Explorer graph data has been confirmed.
 The private backend review path was verified on 2026-08-31 by a temporary Cloud
-Run probe running as `chm-sa`: it updated `fishbase` as
-`danny@oceanagentics.com`, rejected unsupported fields, rejected missing user
-context, rejected the wrong caller header, and confirmed the general node write
-route is absent. The remaining browser-only check is selecting a node in a
+Run probe running as `chm-sa` against the clean committed image: it updated
+`fishbase` as `danny@oceanagentics.com`, rejected unsupported fields, rejected
+missing user context, rejected the wrong caller header, and confirmed the
+general node write route is absent. The remaining browser-only check is selecting a node in a
 signed-in CHM/IAP session, editing review state or reviewer note, and confirming
 the UI shows the persisted `reviewState`, `reviewerNote`, `reviewer`, and
 `lastReviewed` fields.

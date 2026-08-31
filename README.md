@@ -35,16 +35,16 @@ Last verified: August 31, 2026.
 - Cloud Run service: `chm`
 - Runtime service account: `chm-sa@chm-network.iam.gserviceaccount.com`
 - Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5`
-- Cloud Run revision: `chm-00008-vx8`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3`
+- Cloud Run revision: `chm-00009-wkz`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Direct VPC egress: default `us-east4` subnet, `all-traffic`
 - Default `us-east4` subnet: Terraform-imported with Private Google Access
   enabled and `deletion_policy = "ABANDON"`
 - Explorer Cloud Run services: `explorer` and private `explorer-api`
-- Explorer Cloud Run revision: `explorer-00009-75l`
-- Explorer API Cloud Run revision: `explorer-api-00008-mhc`
-- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e`
+- Explorer Cloud Run revision: `explorer-00010-vw6`
+- Explorer API Cloud Run revision: `explorer-api-00009-27n`
+- Explorer image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777`
 - Explorer IAP JWT audience: `/projects/288836337031/global/backendServices/4582439918390522076`
 - Cloud SQL instance: `chm`, database `explorer`
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled

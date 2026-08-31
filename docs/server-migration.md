@@ -27,11 +27,11 @@ authenticated/author review form for review state and reviewer note updates.
 - Public HTTPS requests to both hostnames reach Google IAP.
 - `/explorer` routing is active behind IAP when Terraform is applied with `enable_explorer=true`.
 - Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, Cloud Run `explorer`, optional private `explorer-api`, `/explorer` URL-map routing, and CHM Direct VPC egress for the private API call path.
-- Current CHM deployment: Cloud Run revision `chm-00008-vx8`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:29ea43ef4d384d5d1252f241202e6938829654d77e1682d1c756fbb296abdff5`.
-- Current Explorer deployment: Ryu commit `6a03086`, Cloud Run revision
-  `explorer-00009-75l`, private API revision `explorer-api-00008-mhc`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:e2b744ed43b60f99e6740e5e2a156c8bffc39192a75ff7a2af6dac17e471f29e`.
+- Current CHM deployment: Cloud Run revision `chm-00009-wkz`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a696db7b949cde2fe2c4fa9e65179b16383ea37f3942fa54b87981f1828e6ff3`.
+- Current Explorer deployment: Ryu commit `fa36202`, Cloud Run revision
+  `explorer-00010-vw6`, private API revision `explorer-api-00009-27n`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer@sha256:070e49ba801cfa05f285ca18130c7b3ec7b835e5c28946457b334dcca94b7777`.
 - Authenticated browser verification confirmed Explorer loads real graph data.
 - A temporary Cloud Run probe running as `chm-sa` verified the private review API
   can update `fishbase` as `danny@oceanagentics.com` and rejects extra fields,
