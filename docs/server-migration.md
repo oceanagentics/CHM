@@ -29,13 +29,13 @@ form for review state and reviewer note updates at `/explorer/admin`.
 - `/explorer` routing is public read-only when Terraform is applied with
   `enable_explorer=true`.
 - Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, public Cloud Run `explorer`, IAP-protected Cloud Run `explorer-admin`, optional private `explorer-api`, `/explorer` and `/explorer/admin` URL-map routing, and CHM Direct VPC egress for the private API call path.
-- Current CHM deployment: Cloud Run revision `chm-00010-65w`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:5456cece6520be75630a47a0aa913d9485593ef9a8da6ff040efe29a313e04c1`.
-- Current Explorer deployment: Ryu commit `4fac03e`, public revision
-  `explorer-00013-6c6`, admin revision `explorer-admin-00003-n7c`, private API
-  revision `explorer-api-00012-v62`, public image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:01b8723c4532b5798bc87ebae4361ae70e17057d3f20b5055ca76de9b3cb842a`, and admin image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:5426e7dba0a8124e81e53ddeebb2ce3d3620ce0a3249c693982ba73188b56fed`.
+- Current CHM deployment: Cloud Run revision `chm-00011-gf8`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:163707f86945c620d99b2e709dc2bb883b9fe8f89102764fe27c77065f18c4bc`.
+- Current Explorer deployment: Ryu commit `4198b8c`, public revision
+  `explorer-00014-hwg`, admin revision `explorer-admin-00004-rxr`, private API
+  revision `explorer-api-00013-rwh`, public image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:16f866c2170bd91b53784c995eec2eeee2d71d2910aae5b2e7d2580d60bd8742`, and admin image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:9bdeddb6a704a80b91cbd80289e255616a2504732235ce2f07cc4c9e37c4d98e`.
 - Authenticated browser verification confirmed Explorer loads real graph data.
 - A temporary Cloud Run probe running as `chm-sa` verified the private review API
   can update `fishbase` as `danny@oceanagentics.com` and rejects extra fields,

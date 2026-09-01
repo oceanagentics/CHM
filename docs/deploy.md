@@ -20,8 +20,8 @@ Explorer path split on 2026-08-31:
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:5456cece6520be75630a47a0aa913d9485593ef9a8da6ff040efe29a313e04c1`
-- CHM Cloud Run revision: `chm-00010-65w`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:163707f86945c620d99b2e709dc2bb883b9fe8f89102764fe27c77065f18c4bc`
+- CHM Cloud Run revision: `chm-00011-gf8`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
 - CHM Direct VPC egress: default `us-east4` subnet, `all-traffic`
@@ -31,12 +31,12 @@ Explorer path split on 2026-08-31:
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: public `explorer`, IAP-protected
   `explorer-admin`, and private `explorer-api`
-- Explorer source commit: `4fac03e`
-- Explorer public Cloud Run revision: `explorer-00013-6c6`
-- Explorer admin Cloud Run revision: `explorer-admin-00003-n7c`
-- Explorer API Cloud Run revision: `explorer-api-00012-v62`
-- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:01b8723c4532b5798bc87ebae4361ae70e17057d3f20b5055ca76de9b3cb842a`
-- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:5426e7dba0a8124e81e53ddeebb2ce3d3620ce0a3249c693982ba73188b56fed`
+- Explorer source commit: `4198b8c`
+- Explorer public Cloud Run revision: `explorer-00014-hwg`
+- Explorer admin Cloud Run revision: `explorer-admin-00004-rxr`
+- Explorer API Cloud Run revision: `explorer-api-00013-rwh`
+- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:16f866c2170bd91b53784c995eec2eeee2d71d2910aae5b2e7d2580d60bd8742`
+- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:9bdeddb6a704a80b91cbd80289e255616a2504732235ce2f07cc4c9e37c4d98e`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -59,11 +59,11 @@ digests:
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
-  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:5456cece6520be75630a47a0aa913d9485593ef9a8da6ff040efe29a313e04c1 \
+  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:163707f86945c620d99b2e709dc2bb883b9fe8f89102764fe27c77065f18c4bc \
   -var 'chm_admin_hint_emails=["danny@oceanagentics.com"]' \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:01b8723c4532b5798bc87ebae4361ae70e17057d3f20b5055ca76de9b3cb842a \
-  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:5426e7dba0a8124e81e53ddeebb2ce3d3620ce0a3249c693982ba73188b56fed \
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:16f866c2170bd91b53784c995eec2eeee2d71d2910aae5b2e7d2580d60bd8742 \
+  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:9bdeddb6a704a80b91cbd80289e255616a2504732235ce2f07cc4c9e37c4d98e \
   -var explorer_admin_iap_backend_service_id=5570063593656309274
 ```
 
