@@ -150,7 +150,7 @@ resource "google_compute_url_map" "chm" {
 
   test {
     host    = var.domain
-    path    = "/api/explorer/nodes/fishbase/review"
+    path    = "/api/explorer/nodes/fishbase/localizations/en/review"
     service = google_compute_backend_service.chm.id
   }
 

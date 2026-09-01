@@ -197,8 +197,8 @@ The current review UI/API update is deployed:
   reviewer metadata, raw review JSON, route targets, and source local paths.
 - Explorer admin image: serves `/explorer/admin` in author mode behind IAP.
 - Private Explorer API image: serves the narrow
-  `PATCH /explorer/api/nodes/:id/review` mutation.
-- CHM image: proxies only `PATCH /api/explorer/nodes/:id/review` to the private
+  `PATCH /explorer/api/nodes/:id/localizations/:locale/review` mutation.
+- CHM image: proxies only `PATCH /api/explorer/nodes/:id/localizations/:locale/review` to the private
   Explorer API.
 
 The CHM service needs Direct VPC egress with `all-traffic`, and the default

@@ -189,7 +189,7 @@ test("does not proxy unsupported Explorer API routes", async () => {
 
 test("returns a clear 404 when Explorer review API proxy is not configured", async () => {
   await withServer(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/explorer/nodes/node-1/review`, {
+    const response = await fetch(`${baseUrl}/api/explorer/nodes/node-1/localizations/en/review`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reviewState: "human_reviewed" }),

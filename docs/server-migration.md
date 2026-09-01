@@ -116,8 +116,8 @@ Explorer/Ryu should provide CHM with:
 - Health check path: `/healthz`.
 - Required environment variables, including `APP_BASE_PATH=/explorer|/explorer/admin`, `RYU_DATA_BACKEND=postgres`, and `RYU_MODE=public|api`.
 - Required secrets and database roles: `explorer_read`, `explorer_write`, and `explorer_schema_admin`.
-- Private browser-review API surface through `explorer-api`: `PATCH /explorer/api/nodes/:id/review`.
-- Browser review calls through CHM as `PATCH /api/explorer/nodes/:id/review`.
+- Private browser-review API surface through `explorer-api`: `PATCH /explorer/api/nodes/:id/localizations/:locale/review`.
+- Browser review calls through CHM as `PATCH /api/explorer/nodes/:id/localizations/:locale/review`.
 - Smoke test commands for `/explorer`, `/explorer/admin`, read-only access, authorized review writes, and unauthorized denial.
 - Network requirement: for an internal-only `explorer-api`, CHM must use Direct
   VPC egress through a subnet with Private Google Access enabled.
@@ -131,7 +131,7 @@ Explorer remains responsible for enforcing its own validation and database role 
 - Keep CHM on VPC `all-traffic` egress while it calls internal-only app
   services by `run.app` URI.
 - Do not grant public unauthenticated invoke access to `chm` or `explorer-admin`.
-- Do not expose raw Explorer general-write endpoints directly to browsers; CHM should only proxy `PATCH /api/explorer/nodes/:id/review`.
+- Do not expose raw Explorer general-write endpoints directly to browsers; CHM should only proxy `PATCH /api/explorer/nodes/:id/localizations/:locale/review`.
 - Do not share database users or runtime secrets across apps.
 - Do not let public services use writer or schema-admin credentials.
 - Do not enable Cloud CDN on IAP-protected backend services.
