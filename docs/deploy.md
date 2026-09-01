@@ -15,13 +15,14 @@ The Explorer slice is gated by `enable_explorer`. The live CHM project currently
 Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
 alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
 on 2026-08-28; review UI/API, CHM-to-internal-API VPC fix, and public/admin
-Explorer path split on 2026-08-31:
+Explorer path split on 2026-08-31; localization review proxy and Explorer
+language migration rollout on 2026-09-01:
 
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:163707f86945c620d99b2e709dc2bb883b9fe8f89102764fe27c77065f18c4bc`
-- CHM Cloud Run revision: `chm-00011-gf8`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:1e41b1d4ae72588f00fe82220ae71c70cd25f377cad3dd7a9c5f3f200b714caa`
+- CHM Cloud Run revision: `chm-00012-8h7`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
 - CHM Direct VPC egress: default `us-east4` subnet, `all-traffic`
@@ -31,12 +32,12 @@ Explorer path split on 2026-08-31:
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: public `explorer`, IAP-protected
   `explorer-admin`, and private `explorer-api`
-- Explorer source commit: `4198b8c`
-- Explorer public Cloud Run revision: `explorer-00014-hwg`
-- Explorer admin Cloud Run revision: `explorer-admin-00004-rxr`
-- Explorer API Cloud Run revision: `explorer-api-00013-rwh`
-- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:16f866c2170bd91b53784c995eec2eeee2d71d2910aae5b2e7d2580d60bd8742`
-- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:9bdeddb6a704a80b91cbd80289e255616a2504732235ce2f07cc4c9e37c4d98e`
+- Explorer source commit: `226fc2c`
+- Explorer public Cloud Run revision: `explorer-00015-dc9`
+- Explorer admin Cloud Run revision: `explorer-admin-00005-p9k`
+- Explorer API Cloud Run revision: `explorer-api-00014-jb8`
+- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:9742be1c20233a44f4fd235132aa414fa1488bd198562ce396f2c311633e109c`
+- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:f9e46cb5da233cb3becaf014ffc3ba3bb15a94363e05d756b4a3da4a66f19d84`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -50,20 +51,23 @@ Explorer path split on 2026-08-31:
 - Alerts: confirmed Cloud Monitoring email channel `danny@oceanagentics.com`
   with policies for IAP failures, Cloud Run 5xx spikes, IAM policy changes, and
   service-account key creation
-- Unmanaged Explorer Cloud Run setup/check jobs: deleted after launch setup and
-  verification completed
+- Explorer language migration backup: Cloud SQL backup `1788227781465`
+- Explorer language migration execution: `explorer-lang-migration-226fc2c-klgm5`,
+  backfilled `117` localization rows
+- Unmanaged Explorer Cloud Run setup/check/migration jobs: deleted after launch
+  setup and verification completed
 
-Terraform reported no drift on 2026-08-31 with the currently deployed image
+Terraform reported no drift on 2026-09-01 with the currently deployed image
 digests:
 
 ```sh
 cd /Users/danvallentyne/dev/CHM/infra
 terraform plan \
-  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:163707f86945c620d99b2e709dc2bb883b9fe8f89102764fe27c77065f18c4bc \
+  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:1e41b1d4ae72588f00fe82220ae71c70cd25f377cad3dd7a9c5f3f200b714caa \
   -var 'chm_admin_hint_emails=["danny@oceanagentics.com"]' \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:16f866c2170bd91b53784c995eec2eeee2d71d2910aae5b2e7d2580d60bd8742 \
-  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:9bdeddb6a704a80b91cbd80289e255616a2504732235ce2f07cc4c9e37c4d98e \
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:9742be1c20233a44f4fd235132aa414fa1488bd198562ce396f2c311633e109c \
+  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:f9e46cb5da233cb3becaf014ffc3ba3bb15a94363e05d756b4a3da4a66f19d84 \
   -var explorer_admin_iap_backend_service_id=5570063593656309274
 ```
 
