@@ -1,10 +1,26 @@
 steps:
   - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - docker pull "${_CACHE_IMAGE}" || true
+
+  - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --cache-from
+      - ${_CACHE_IMAGE}
       - -t
       - ${_IMAGE}
+      - -t
+      - ${_CACHE_IMAGE}
       - .
+
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - if [ "${_CACHE_IMAGE}" != "${_IMAGE}" ]; then docker push "${_CACHE_IMAGE}"; fi
 
 images:
   - ${_IMAGE}
@@ -16,3 +32,4 @@ options:
 
 substitutions:
   _IMAGE: us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest
+  _CACHE_IMAGE: us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest

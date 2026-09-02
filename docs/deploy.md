@@ -15,8 +15,8 @@ The Explorer slice is gated by `enable_explorer`. The live CHM project currently
 Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
 alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
 on 2026-08-28; review UI/API, CHM-to-internal-API VPC fix, and public/admin
-Explorer path split on 2026-08-31; localization review proxy and Explorer
-language migration rollout on 2026-09-01:
+Explorer path split on 2026-08-31; Explorer language migration rollout on
+2026-09-01; CHM Explorer write proxy removed locally for the next deployment:
 
 - Project: `chm-network`
 - Region: `us-east4`
@@ -61,7 +61,7 @@ Terraform reported no drift on 2026-09-01 with the currently deployed image
 digests:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM/infra
+cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform plan \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:1e41b1d4ae72588f00fe82220ae71c70cd25f377cad3dd7a9c5f3f200b714caa \
   -var 'chm_admin_hint_emails=["danny@oceanagentics.com"]' \
@@ -75,6 +75,36 @@ Public DNS now points both CHM hostnames at the load balancer. Unauthenticated
 HTTPS requests to `/` and `/explorer/admin` should go to the Google IAP login
 flow. Unauthenticated `/explorer` should serve the public read-only Explorer
 view.
+
+## Routine Fast App Deploy
+
+Use this path for CHM code-only changes. It builds one cached image, pushes it
+to Artifact Registry, and updates the existing Cloud Run service directly. Do
+not run Terraform for image-only app deploys.
+
+```sh
+cd /Users/danvallentyne/dev/oceanagentics/CHM
+SHA=$(git rev-parse --short HEAD)
+IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:${SHA}
+CACHE_IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest
+
+gcloud builds submit \
+  --region us-east4 \
+  --config cloudbuild.yaml \
+  --substitutions _IMAGE=${IMAGE},_CACHE_IMAGE=${CACHE_IMAGE} \
+  .
+
+gcloud run deploy chm \
+  --project chm-network \
+  --region us-east4 \
+  --image ${IMAGE} \
+  --quiet
+```
+
+Use Terraform only for infrastructure, IAM/IAP, Cloud SQL, secrets, routing,
+service configuration, domain, or first-bootstrap changes. If a fast deploy
+causes Terraform to report image drift later, do not roll the app image back
+just to satisfy Terraform.
 
 ## One-Time Bootstrap
 
@@ -92,14 +122,14 @@ gcloud storage buckets update gs://chm-network-tfstate-288836337031 --versioning
 Then initialize Terraform:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM/infra
+cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform init
 ```
 
 Then bootstrap the image repository and build service account:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM/infra
+cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform apply \
   -target=google_project_service.required \
   -target=google_artifact_registry_repository.chm_apps \
@@ -113,14 +143,14 @@ terraform apply \
 Then build and push the app image. The build config uses the dedicated CHM Cloud Build service account and stores build logs in Cloud Logging:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM
+cd /Users/danvallentyne/dev/oceanagentics/CHM
 gcloud builds submit --region us-east4 --config cloudbuild.yaml .
 ```
 
 Then review and apply the full plan:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM/infra
+cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<image-digest>
 terraform apply -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<image-digest>
 ```
@@ -146,7 +176,7 @@ When the certificate is active, unauthenticated requests to `/` and `/login` sho
 First apply CHM Terraform without enabling Explorer so the non-billable Explorer build identity exists:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM/infra
+cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform plan -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest>
 terraform apply -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest>
 ```
@@ -158,19 +188,19 @@ cd /Users/danvallentyne/dev/oceanagentics/ryu
 gcloud builds submit \
   --region us-east4 \
   --config cloudbuild.yaml \
-  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public:$(git rev-parse --short HEAD),_APP_BASE_PATH=/explorer,_VITE_APP_MODE=public,_VITE_CAN_REVIEW_NODES=false,_VITE_REVIEW_API_BASE_PATH=/api/explorer \
+  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public:$(git rev-parse --short HEAD),_CACHE_IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public:latest,_APP_BASE_PATH=/explorer,_VITE_APP_MODE=public,_VITE_CAN_REVIEW_NODES=false \
   .
 gcloud builds submit \
   --region us-east4 \
   --config cloudbuild.yaml \
-  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin:$(git rev-parse --short HEAD),_APP_BASE_PATH=/explorer/admin,_VITE_APP_MODE=author,_VITE_CAN_REVIEW_NODES=true,_VITE_REVIEW_API_BASE_PATH=/api/explorer \
+  --substitutions _IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin:$(git rev-parse --short HEAD),_CACHE_IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin:latest,_APP_BASE_PATH=/explorer/admin,_VITE_APP_MODE=author,_VITE_CAN_REVIEW_NODES=true \
   .
 ```
 
 Then apply the gated Explorer infrastructure:
 
 ```sh
-cd /Users/danvallentyne/dev/CHM/infra
+cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform plan \
   -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:<chm-image-digest> \
   -var enable_explorer=true \
@@ -195,19 +225,15 @@ unmanaged Cloud Run setup/check jobs used for that work have been deleted. Keep
 the production Postgres shape in the Explorer repo SQL and docs; design the next
 database-change runner only when a real schema change is needed.
 
-The current review UI/API update is deployed:
+The current Explorer API refactor removes CHM from the write path:
 
 - Public Explorer image: serves `/explorer` in read-only mode and redacts
   reviewer metadata, raw review JSON, route targets, and source local paths.
-- Explorer admin image: serves `/explorer/admin` in author mode behind IAP.
-- Private Explorer API image: serves the narrow
-  `PATCH /explorer/api/nodes/:id/localizations/:locale/review` mutation.
-- CHM image: proxies only `PATCH /api/explorer/nodes/:id/localizations/:locale/review` to the private
-  Explorer API.
-
-The CHM service needs Direct VPC egress with `all-traffic`, and the default
-`us-east4` subnet needs Private Google Access enabled, so CHM service-to-service
-requests to the internal-only `explorer-api` are treated as internal traffic.
+- Explorer admin image: serves `/explorer/admin` in author mode behind IAP and
+  calls Explorer's own `/api/records` routes.
+- Private Explorer API image: serves bearer-token `/api/records`
+  access for agents.
+- CHM image: serves the portal only and does not proxy Explorer writes.
 
 Expected checks after routing is enabled:
 
@@ -220,12 +246,5 @@ curl -I https://chm.oceanagentics.org/explorer/admin
 Unauthenticated `/explorer` requests should return the public Explorer page
 without IAP. Unauthenticated `/explorer/admin` requests should be redirected by
 IAP before reaching Explorer admin. Authenticated browser loading of real
-Explorer graph data has been confirmed.
-The private backend review path was verified on 2026-08-31 by a temporary Cloud
-Run probe running as `chm-sa` against the clean committed image: it updated
-`fishbase` as `danny@oceanagentics.com`, rejected unsupported fields, rejected
-missing user context, rejected the wrong caller header, and confirmed the
-general node write route is absent. The remaining browser-only check is selecting a node in a
-signed-in CHM/IAP session, editing review state or reviewer note, and confirming
-the UI shows the persisted `reviewState`, `reviewerNote`, `reviewer`, and
-`lastReviewed` fields.
+Explorer graph data has been confirmed. After deploying the API refactor, smoke
+test direct Explorer admin review writes and bearer-token agent record writes.

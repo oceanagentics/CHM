@@ -21,8 +21,8 @@ The current CHM app is a minimal Node.js and Express portal shell.
 - `/healthz` returns `{ "status": "ok" }` for Cloud Run startup probes.
 - `/explorer` routes to the public read-only Explorer backend.
 - `/explorer/admin` routes to the IAP-protected Explorer admin backend.
-- `PATCH /api/explorer/nodes/:id/localizations/:locale/review` is the only CHM browser-write proxy
-  to the private Explorer API.
+- CHM does not proxy Explorer writes. Explorer handles direct
+  IAP-authenticated browser writes and bearer-token agent API access itself.
 
 The CHM app validates Google IAP signed JWT assertions for protected app routes,
 and Explorer admin is configured to do the same. Ocean Agentics Workspace users
@@ -78,11 +78,9 @@ Terraform keeps the Explorer slice behind `enable_explorer=false` by default for
 fresh/bootstrap applies, but the live CHM project currently runs it with
 `enable_explorer=true`.
 
-CHM and Explorer narrow the Explorer browser write surface to the node-localization review
-path above. Public Explorer shows record depth and review state without edit
-controls. Explorer admin provides the review-state dropdown plus reviewer-note
-form. A private API probe verified the narrow review write and denial cases; the
-remaining manual check is the signed-in `/explorer/admin` form click-through.
+Public Explorer shows record depth and review state without edit controls.
+Explorer admin owns its own direct IAP-authenticated review and record write
+calls. Agent writes go to Explorer's bearer-token record API, not through CHM.
 
 ## Development
 

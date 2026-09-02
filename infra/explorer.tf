@@ -18,7 +18,7 @@ resource "google_service_account" "explorer_api" {
 
   project      = var.project_id
   account_id   = "explorer-api-sa"
-  display_name = "Explorer private API Cloud Run service account"
+  display_name = "Explorer API Cloud Run service account"
 
   depends_on = [google_project_service.required]
 }
@@ -449,11 +449,12 @@ resource "google_cloud_run_v2_service" "explorer_admin" {
 resource "google_cloud_run_v2_service" "explorer_api" {
   count = local.explorer_api_enabled ? 1 : 0
 
-  project             = var.project_id
-  name                = "explorer-api"
-  location            = var.region
-  deletion_protection = true
-  ingress             = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  project              = var.project_id
+  name                 = "explorer-api"
+  location             = var.region
+  deletion_protection  = true
+  ingress              = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  invoker_iam_disabled = true
 
   template {
     service_account = google_service_account.explorer_api[0].email
@@ -494,7 +495,7 @@ resource "google_cloud_run_v2_service" "explorer_api" {
 
       env {
         name  = "APP_BASE_PATH"
-        value = "/explorer"
+        value = "/"
       }
 
       env {
@@ -508,8 +509,13 @@ resource "google_cloud_run_v2_service" "explorer_api" {
       }
 
       env {
-        name  = "RYU_TRUSTED_CALLER_SERVICE_ACCOUNTS"
-        value = google_service_account.chm.email
+        name  = "RYU_API_TOKENS_JSON"
+        value = var.explorer_api_tokens_json
+      }
+
+      env {
+        name  = "RYU_API_TOKEN_LIMIT_PER_MINUTE"
+        value = tostring(var.explorer_api_token_limit_per_minute)
       }
 
       env {
@@ -654,6 +660,43 @@ resource "google_compute_backend_service" "explorer_admin" {
   }
 }
 
+resource "google_compute_region_network_endpoint_group" "explorer_api" {
+  count = local.explorer_api_enabled ? 1 : 0
+
+  project               = var.project_id
+  name                  = "explorer-api-web-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+
+  cloud_run {
+    service = google_cloud_run_v2_service.explorer_api[0].name
+  }
+}
+
+resource "google_compute_backend_service" "explorer_api" {
+  count = local.explorer_api_enabled ? 1 : 0
+
+  project               = var.project_id
+  name                  = "explorer-api-web-backend"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  protocol              = "HTTP"
+  enable_cdn            = false
+  timeout_sec           = 30
+
+  backend {
+    group = google_compute_region_network_endpoint_group.explorer_api[0].id
+  }
+
+  iap {
+    enabled = false
+  }
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+}
+
 resource "google_cloud_run_v2_service_iam_member" "explorer_admin_iap_invoker" {
   count = var.enable_explorer ? 1 : 0
 
@@ -671,14 +714,4 @@ resource "google_iap_web_backend_service_iam_member" "explorer_admin_domain" {
   web_backend_service = google_compute_backend_service.explorer_admin[0].name
   role                = "roles/iap.httpsResourceAccessor"
   member              = var.iap_member
-}
-
-resource "google_cloud_run_v2_service_iam_member" "explorer_api_chm_invoker" {
-  count = local.explorer_api_enabled ? 1 : 0
-
-  project  = var.project_id
-  location = google_cloud_run_v2_service.explorer_api[0].location
-  name     = google_cloud_run_v2_service.explorer_api[0].name
-  role     = "roles/run.invoker"
-  member   = google_service_account.chm.member
 }

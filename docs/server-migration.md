@@ -52,7 +52,6 @@ Use one shared domain with path routing:
 - `https://chm.oceanagentics.org/login` routes to CHM and should trigger or forward to the IAP login flow, not implement a separate CHM password screen.
 - `https://chm.oceanagentics.org/explorer` routes to public read-only Explorer.
 - `https://chm.oceanagentics.org/explorer/admin` routes to IAP-protected Explorer admin.
-- `https://chm.oceanagentics.org/api/explorer/...` routes to CHM's IAP-protected Explorer API proxy.
 - `https://chm.oceanagentics.com/`, `/login`, `/explorer`, and `/explorer/admin` route to the same CHM-managed load balancer and explicit app backends.
 - Future CHM apps use their own path prefixes, for example `/otherapp1` and `/otherapp2`.
 
@@ -80,8 +79,7 @@ Public Explorer uses only that hint to redirect known admins from `/explorer` to
 - Cloud Build uses the dedicated `chm-build-sa` service account instead of the default Compute service account.
 - Initial Terraform-managed routes are `/` and `/login`.
 - Target Explorer routes are `/explorer`, `/explorer/*`, `/explorer/admin`,
-  `/explorer/admin/*`, `/api/explorer`, and `/api/explorer/*`, managed only
-  when `enable_explorer=true`.
+  and `/explorer/admin/*`, managed only when `enable_explorer=true`.
 - The Explorer/Ryu repo now provides Cloud Run base-path compatibility for `/explorer` and `/explorer/admin`, runtime modes, a Dockerfile, Cloud Build config, PostgreSQL schema reference, and Postgres seed handling.
 
 ## CHM Owns
@@ -97,7 +95,6 @@ Public Explorer uses only that hint to redirect known admins from `/explorer` to
 - CHM portal UI, `/login` route, application switcher, and app loader.
 - CHM app registry for path-mounted apps.
 - IAP signed JWT validation in CHM.
-- Trusted user-context forwarding from CHM to private app services.
 - Shared service-account, Secret Manager, Artifact Registry, Cloud SQL, Cloud Storage, logging, and deployment conventions.
 - Shared VPC/subnet settings needed for private Cloud Run service-to-service
   calls.
@@ -112,12 +109,14 @@ Explorer/Ryu should provide CHM with:
 - Admin route prefix: `/explorer/admin`.
 - Built public Explorer image digest for `explorer_image`.
 - Built admin Explorer image digest for `explorer_admin_image`.
-- Optional built Explorer API image digest for `explorer_api_image`; this defaults to `explorer_image` when empty.
+- Optional built Explorer API image digest for bearer-token agent access; this
+  defaults to `explorer_image` when empty.
 - Health check path: `/healthz`.
 - Required environment variables, including `APP_BASE_PATH=/explorer|/explorer/admin`, `RYU_DATA_BACKEND=postgres`, and `RYU_MODE=public|api`.
 - Required secrets and database roles: `explorer_read`, `explorer_write`, and `explorer_schema_admin`.
-- Private browser-review API surface through `explorer-api`: `PATCH /explorer/api/nodes/:id/localizations/:locale/review`.
-- Browser review calls through CHM as `PATCH /api/explorer/nodes/:id/localizations/:locale/review`.
+- Browser review calls go directly to the IAP-protected Explorer service as
+  `PATCH /explorer/admin/api/records/:id/review`.
+- Agent reads and writes go directly to Explorer's bearer-token record API.
 - Smoke test commands for `/explorer`, `/explorer/admin`, read-only access, authorized review writes, and unauthorized denial.
 - Network requirement: for an internal-only `explorer-api`, CHM must use Direct
   VPC egress through a subnet with Private Google Access enabled.
@@ -128,10 +127,10 @@ Explorer remains responsible for enforcing its own validation and database role 
 
 - Do not enable IAP both on a load-balancer backend service and directly on the Cloud Run service behind it.
 - Restrict load-balanced Cloud Run services to internal and Cloud Load Balancing ingress so default `run.app` URLs cannot bypass IAP.
-- Keep CHM on VPC `all-traffic` egress while it calls internal-only app
-  services by `run.app` URI.
+- Do not require CHM service-to-service calls for Explorer writes.
 - Do not grant public unauthenticated invoke access to `chm` or `explorer-admin`.
-- Do not expose raw Explorer general-write endpoints directly to browsers; CHM should only proxy `PATCH /api/explorer/nodes/:id/localizations/:locale/review`.
+- Do not proxy Explorer writes through CHM. Browser writes must use direct
+  Explorer IAP auth, and agent writes must use Explorer bearer-token auth.
 - Do not share database users or runtime secrets across apps.
 - Do not let public services use writer or schema-admin credentials.
 - Do not enable Cloud CDN on IAP-protected backend services.
@@ -147,6 +146,6 @@ Explorer remains responsible for enforcing its own validation and database role 
 6. Output the load balancer IP so the `chm.oceanagentics.org` DNS `A` record can be created manually in Dynadot.
 7. Restrict direct Cloud Run ingress for load-balanced services.
 8. Grant only the needed invoker permissions between CHM and IAP.
-9. Add `/explorer`, `/explorer/admin`, and `/api/explorer` routing by applying
+9. Add `/explorer` and `/explorer/admin` routing by applying
    the gated Explorer Terraform slice with `enable_explorer=true` and real
    public/admin Explorer image digests.

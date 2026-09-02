@@ -80,9 +80,13 @@ resource "google_compute_url_map" "chm" {
       service = google_compute_backend_service.chm.id
     }
 
-    path_rule {
-      paths   = ["/api/explorer", "/api/explorer/*"]
-      service = google_compute_backend_service.chm.id
+    dynamic "path_rule" {
+      for_each = local.explorer_api_enabled ? [1] : []
+
+      content {
+        paths   = ["/api/records", "/api/records/*"]
+        service = google_compute_backend_service.explorer_api[0].id
+      }
     }
 
     dynamic "path_rule" {
@@ -148,10 +152,24 @@ resource "google_compute_url_map" "chm" {
     }
   }
 
-  test {
-    host    = var.domain
-    path    = "/api/explorer/nodes/fishbase/localizations/en/review"
-    service = google_compute_backend_service.chm.id
+  dynamic "test" {
+    for_each = local.explorer_api_enabled ? [1] : []
+
+    content {
+      host    = var.domain
+      path    = "/api/records"
+      service = google_compute_backend_service.explorer_api[0].id
+    }
+  }
+
+  dynamic "test" {
+    for_each = local.explorer_api_enabled ? [1] : []
+
+    content {
+      host    = var.domain
+      path    = "/api/records/fishbase"
+      service = google_compute_backend_service.explorer_api[0].id
+    }
   }
 
   dynamic "test" {

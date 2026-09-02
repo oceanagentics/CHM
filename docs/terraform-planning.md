@@ -145,14 +145,13 @@ After real Explorer public and admin image digests exist, apply with
 6. Cloud SQL Client grants for the Explorer service accounts.
 7. Public Cloud Run service `explorer` in read-only mode.
 8. IAP-protected Cloud Run service `explorer-admin` in author/read mode.
-9. Optional private Cloud Run service `explorer-api` for the narrow browser-review API.
-10. Serverless NEGs and backend services for `explorer` and `explorer-admin`.
+9. Optional Explorer API Cloud Run service for bearer-token agent access.
+10. Serverless NEGs and backend services for `explorer`, `explorer-admin`, and
+    `explorer-api`.
 11. Explicit IAP disabled state for the public Explorer backend.
 12. IAP access and IAP service-agent invoker permissions for the Explorer admin backend.
 13. App-level IAP JWT validation on Explorer admin using `IAP_JWT_AUDIENCE`.
-14. `/explorer`, `/explorer/admin`, and `/api/explorer` URL-map rules.
-15. CHM VPC `all-traffic` egress through the Private Google Access-enabled
-    subnet so CHM can reach internal-only `explorer-api`.
+14. `/explorer`, `/explorer/admin`, and `/api/records` URL-map rules.
 
 If `explorer-admin-web-backend` does not exist yet, leave
 `explorer_admin_iap_backend_service_id` empty for the first apply, read the new
@@ -167,12 +166,8 @@ Initial routing should be explicit and reviewable:
 | --- | --- | --- |
 | `chm.oceanagentics.org` | `/` | `chm` |
 | `chm.oceanagentics.org` | `/login` | `chm` |
-| `chm.oceanagentics.org` | `/api/explorer` | `chm` |
-| `chm.oceanagentics.org` | `/api/explorer/*` | `chm` |
 | `chm.oceanagentics.com` | `/` | `chm` |
 | `chm.oceanagentics.com` | `/login` | `chm` |
-| `chm.oceanagentics.com` | `/api/explorer` | `chm` |
-| `chm.oceanagentics.com` | `/api/explorer/*` | `chm` |
 
 The URL map default backend should route to CHM so unmatched CHM-domain requests get a CHM-owned response.
 
@@ -188,6 +183,10 @@ Target Explorer routing remains explicit and gated:
 | `chm.oceanagentics.com` | `/explorer/*` | `explorer` |
 | `chm.oceanagentics.com` | `/explorer/admin` | `explorer-admin` |
 | `chm.oceanagentics.com` | `/explorer/admin/*` | `explorer-admin` |
+| `chm.oceanagentics.org` | `/api/records` | `explorer-api` |
+| `chm.oceanagentics.org` | `/api/records/*` | `explorer-api` |
+| `chm.oceanagentics.com` | `/api/records` | `explorer-api` |
+| `chm.oceanagentics.com` | `/api/records/*` | `explorer-api` |
 
 ## State Plan
 

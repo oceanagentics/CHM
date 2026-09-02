@@ -1,18 +1,15 @@
 const express = require("express");
 const helmet = require("helmet");
-const { GoogleAuth, OAuth2Client } = require("google-auth-library");
+const { OAuth2Client } = require("google-auth-library");
 
 const IAP_HEADER = "x-goog-iap-jwt-assertion";
 const IAP_ISSUER = "https://cloud.google.com/iap";
 const OCEAN_AGENTICS_DOMAIN = "oceanagentics.com";
-const EXPLORER_REVIEW_ROUTE = /^\/nodes\/[^/]+\/localizations\/[^/]+\/review\/?$/;
 const ADMIN_HINT_COOKIE_NAME = "chm_admin_hint";
 const DEFAULT_ADMIN_HINT_EMAILS = ["danny@oceanagentics.com"];
 const iapClient = new OAuth2Client();
-const serviceAuth = new GoogleAuth();
 
 let cachedIapKeys = null;
-const idTokenClients = new Map();
 
 async function getIapPublicKeys() {
   const now = Date.now();
@@ -133,60 +130,6 @@ function setAdminHintCookie(adminEmails) {
   };
 }
 
-async function getIdTokenClient(audience) {
-  if (!idTokenClients.has(audience)) {
-    idTokenClients.set(audience, await serviceAuth.getIdTokenClient(audience));
-  }
-
-  return idTokenClients.get(audience);
-}
-
-function explorerApiUrl(req) {
-  const explorerApiBase = process.env.EXPLORER_API_URL;
-  if (!explorerApiBase) {
-    return null;
-  }
-
-  const base = explorerApiBase.replace(/\/+$/, "");
-  const suffix = req.url === "/" ? "" : req.url;
-  return `${base}/explorer/api${suffix}`;
-}
-
-function isAllowedExplorerApiRequest(req) {
-  return req.method === "PATCH" && EXPLORER_REVIEW_ROUTE.test(req.path);
-}
-
-async function proxyExplorerApi(req, res) {
-  const targetUrl = explorerApiUrl(req);
-  if (!targetUrl) {
-    return res.status(404).json({ error: "explorer_api_not_configured" });
-  }
-
-  const audience = process.env.EXPLORER_API_AUDIENCE || process.env.EXPLORER_API_URL;
-  const client = await getIdTokenClient(audience);
-  const iapUser = req.iapUser || {};
-  const response = await client.request({
-    url: targetUrl,
-    method: req.method,
-    data: ["GET", "HEAD"].includes(req.method) ? undefined : req.body,
-    headers: {
-      "content-type": "application/json",
-      "x-chm-caller-service-account": process.env.CHM_SERVICE_ACCOUNT_EMAIL || "",
-      "x-chm-user-email": iapUser.email || "",
-      "x-chm-user-subject": iapUser.subject || "",
-    },
-    validateStatus: () => true,
-  });
-
-  res.status(response.status);
-  const contentType = response.headers?.["content-type"];
-  if (contentType) {
-    res.type(String(contentType));
-  }
-
-  return res.send(response.data);
-}
-
 function createApp(options = {}) {
   const app = express();
   const hintAdminEmails = adminHintEmails(options);
@@ -197,19 +140,6 @@ function createApp(options = {}) {
   app.use(express.json({ limit: "2mb" }));
   app.use(requireIap(options));
   app.use(setAdminHintCookie(hintAdminEmails));
-
-  app.use("/api/explorer", async (req, res) => {
-    if (!isAllowedExplorerApiRequest(req)) {
-      return res.status(404).json({ error: "not_found" });
-    }
-
-    try {
-      await proxyExplorerApi(req, res);
-    } catch (error) {
-      console.warn("Explorer API proxy failed", { message: error.message });
-      res.status(502).json({ error: "explorer_api_proxy_failed" });
-    }
-  });
 
   app.get("/", (_req, res) => {
     res.type("html").send(`<!doctype html>

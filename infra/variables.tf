@@ -70,7 +70,7 @@ variable "enable_explorer" {
 }
 
 variable "enable_explorer_api" {
-  description = "Create the private Explorer browser-review API service when Explorer is enabled."
+  description = "Create the Explorer bearer-token API service when Explorer is enabled."
   type        = bool
   default     = true
 }
@@ -88,9 +88,27 @@ variable "explorer_admin_image" {
 }
 
 variable "explorer_api_image" {
-  description = "Container image for the private Explorer API service. Defaults to explorer_image when empty."
+  description = "Container image for the Explorer API service. Defaults to explorer_image when empty."
   type        = string
   default     = ""
+}
+
+variable "explorer_api_tokens_json" {
+  description = "JSON array of Explorer API token records. Store token hashes only, never plaintext tokens."
+  type        = string
+  default     = "[]"
+  sensitive   = true
+
+  validation {
+    condition     = can(jsondecode(var.explorer_api_tokens_json))
+    error_message = "explorer_api_tokens_json must be valid JSON."
+  }
+}
+
+variable "explorer_api_token_limit_per_minute" {
+  description = "Generous per-token Explorer API request limit for runaway agent protection."
+  type        = number
+  default     = 300
 }
 
 variable "explorer_iap_backend_service_id" {
@@ -148,13 +166,13 @@ variable "explorer_admin_max_instance_count" {
 }
 
 variable "explorer_api_min_instance_count" {
-  description = "Minimum instances for the private Explorer API service."
+  description = "Minimum instances for the Explorer API service."
   type        = number
   default     = 0
 }
 
 variable "explorer_api_max_instance_count" {
-  description = "Maximum instances for the private Explorer API service."
+  description = "Maximum instances for the Explorer API service."
   type        = number
   default     = 2
 }

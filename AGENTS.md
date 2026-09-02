@@ -15,6 +15,13 @@
 - Keep changes minimal and prefer existing patterns.
 - Avoid adding helpers, scripts, or cleanup work unless requested.
 
+## Fast App Deploy
+
+- For CHM code-only deploys, build a cached immutable image with `cloudbuild.yaml`, then deploy that image to the existing `chm` Cloud Run service with `gcloud run deploy --image`.
+- Use `_CACHE_IMAGE=us-east4-docker.pkg.dev/chm-network/chm-apps/chm:latest` so unchanged dependency layers are reused when `package-lock.json` has not changed.
+- Do not run Terraform for image-only app deploys. Terraform is for infrastructure, IAM/IAP, Cloud SQL, secrets, routing, service config, or domain changes.
+- Before building or deploying, verify the worktree is clean or the user has approved the exact dirty state.
+
 ## Project Plans
 
 - Read `docs/server-migration.md` before changing CHM infrastructure, IAP, Cloud Run, app routing, login, or Explorer integration behavior.
