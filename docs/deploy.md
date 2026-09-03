@@ -16,7 +16,8 @@ Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
 alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
 on 2026-08-28; review UI/API, CHM-to-internal-API VPC fix, and public/admin
 Explorer path split on 2026-08-31; Explorer language migration rollout on
-2026-09-01; direct bearer-token Explorer record API deployed on 2026-09-03:
+2026-09-01; direct bearer-token Explorer record API deployed on 2026-09-03;
+API-only locale availability fix fast-deployed on 2026-09-03:
 
 - Project: `chm-network`
 - Region: `us-east4`
@@ -33,13 +34,14 @@ Explorer path split on 2026-08-31; Explorer language migration rollout on
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: public `explorer`, IAP-protected
   `explorer-admin`, and bearer-token `explorer-api`
-- Explorer source commit: `d6b6992`
+- Explorer public/admin source commit: `d6b6992`
+- Explorer API source commit: `7bb5257`
 - Explorer public Cloud Run revision: `explorer-00018-7qw`
 - Explorer admin Cloud Run revision: `explorer-admin-00008-qz9`
-- Explorer API Cloud Run revision: `explorer-api-00016-bpt`
+- Explorer API Cloud Run revision: `explorer-api-00017-2gh`
 - Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:25e761049522571b0f0fb0521830c54418b8d12dca5ee91a9842d200bfe40ab5`
 - Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:09c40f273c50c00d13b9a30ec1109a16da224b3729a054b22b0ec01b5a56d07f`
-- Explorer API image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:0f6c8ae7c27e8d97964c571d40b418d04722afdd5e0364757424956e747a6c6e`
+- Explorer API image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:140b4da31e24142adb2a8043fce09cf1b04feb054ef43ac9f5e050e6acc1b86c`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -59,8 +61,7 @@ Explorer path split on 2026-08-31; Explorer language migration rollout on
 - Unmanaged Explorer Cloud Run setup/check/migration jobs: deleted after launch
   setup and verification completed
 
-Terraform applied the direct Explorer record API routing on 2026-09-03 with
-these image digests:
+Use these image digests for the next Terraform plan:
 
 ```sh
 cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
@@ -70,7 +71,7 @@ terraform plan \
   -var enable_explorer=true \
   -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:25e761049522571b0f0fb0521830c54418b8d12dca5ee91a9842d200bfe40ab5 \
   -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:09c40f273c50c00d13b9a30ec1109a16da224b3729a054b22b0ec01b5a56d07f \
-  -var explorer_api_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:0f6c8ae7c27e8d97964c571d40b418d04722afdd5e0364757424956e747a6c6e \
+  -var explorer_api_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:140b4da31e24142adb2a8043fce09cf1b04feb054ef43ac9f5e050e6acc1b86c \
   -var explorer_admin_iap_backend_service_id=5570063593656309274
 ```
 

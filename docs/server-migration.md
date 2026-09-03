@@ -38,19 +38,21 @@ authenticated/author review form for review state and reviewer note updates at
 - Current CHM deployment: CHM commit `07dd201`, Cloud Run revision
   `chm-00013-lvp`, image
   `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a02418369050dfb52f5eba561df32628f6116ddc9c6f1a002d31ba7582c2c90e`.
-- Current Explorer deployment: Ryu commit `d6b6992`, public revision
-  `explorer-00018-7qw`, admin revision `explorer-admin-00008-qz9`, API
-  revision `explorer-api-00016-bpt`, public image
+- Current Explorer deployment: public/admin from Ryu commit `d6b6992`, API from
+  Ryu commit `7bb5257`; public revision `explorer-00018-7qw`, admin revision
+  `explorer-admin-00008-qz9`, API revision `explorer-api-00017-2gh`, public image
   `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:25e761049522571b0f0fb0521830c54418b8d12dca5ee91a9842d200bfe40ab5`,
   admin image
   `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:09c40f273c50c00d13b9a30ec1109a16da224b3729a054b22b0ec01b5a56d07f`,
   and API image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:0f6c8ae7c27e8d97964c571d40b418d04722afdd5e0364757424956e747a6c6e`.
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:140b4da31e24142adb2a8043fce09cf1b04feb054ef43ac9f5e050e6acc1b86c`.
 - Authenticated browser verification confirmed Explorer loads real graph data.
 - Live `/api/records` smoke on 2026-09-03 verified unauthenticated
   `401 missing_bearer_token`, invalid bearer `403 invalid_bearer_token`,
   writer-token read `200`, `validateOnly` write preflight `200`, and a
-  throwaway record create/delete cycle with final cleanup.
+  throwaway record create/delete cycle with final cleanup. API revision
+  `explorer-api-00017-2gh` also verified `localeAvailability=available`,
+  `missing`, `partial`, and `complete` each return `200`.
 - Unmanaged Explorer Cloud Run setup/check jobs were deleted after launch
   setup and verification.
 
