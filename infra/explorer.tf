@@ -14,7 +14,7 @@ resource "google_service_account" "explorer" {
 }
 
 resource "google_service_account" "explorer_api" {
-  count = local.explorer_api_enabled ? 1 : 0
+  count = var.enable_explorer ? 1 : 0
 
   project      = var.project_id
   account_id   = "explorer-api-sa"
@@ -110,7 +110,7 @@ resource "google_project_iam_member" "explorer_cloud_sql_client" {
 }
 
 resource "google_project_iam_member" "explorer_api_cloud_sql_client" {
-  count = local.explorer_api_enabled ? 1 : 0
+  count = var.enable_explorer ? 1 : 0
 
   project = var.project_id
   role    = "roles/cloudsql.client"
@@ -135,7 +135,7 @@ resource "google_secret_manager_secret_iam_member" "explorer_db_read_password_ac
 }
 
 resource "google_secret_manager_secret_iam_member" "explorer_db_write_password_access" {
-  count = local.explorer_api_enabled ? 1 : 0
+  count = var.enable_explorer ? 1 : 0
 
   project   = var.project_id
   secret_id = google_secret_manager_secret.explorer_db_write_password[0].secret_id
@@ -318,7 +318,7 @@ resource "google_cloud_run_v2_service" "explorer_admin" {
   ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
-    service_account = google_service_account.explorer[0].email
+    service_account = google_service_account.explorer_api[0].email
 
     vpc_access {
       egress = "PRIVATE_RANGES_ONLY"
@@ -366,7 +366,7 @@ resource "google_cloud_run_v2_service" "explorer_admin" {
 
       env {
         name  = "RYU_MODE"
-        value = "public"
+        value = "api"
       }
 
       dynamic "env" {
@@ -390,7 +390,7 @@ resource "google_cloud_run_v2_service" "explorer_admin" {
 
       env {
         name  = "PGUSER"
-        value = google_sql_user.explorer_read[0].name
+        value = google_sql_user.explorer_write[0].name
       }
 
       env {
@@ -398,7 +398,7 @@ resource "google_cloud_run_v2_service" "explorer_admin" {
 
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.explorer_db_read_password[0].secret_id
+            secret  = google_secret_manager_secret.explorer_db_write_password[0].secret_id
             version = "latest"
           }
         }
@@ -439,10 +439,11 @@ resource "google_cloud_run_v2_service" "explorer_admin" {
 
   depends_on = [
     google_artifact_registry_repository.chm_apps,
-    google_project_iam_member.explorer_cloud_sql_client,
-    google_secret_manager_secret_version.explorer_db_read_password,
+    google_project_iam_member.explorer_api_cloud_sql_client,
+    google_secret_manager_secret_iam_member.explorer_db_write_password_access,
+    google_secret_manager_secret_version.explorer_db_write_password,
     google_sql_database.explorer,
-    google_sql_user.explorer_read,
+    google_sql_user.explorer_write,
   ]
 }
 
