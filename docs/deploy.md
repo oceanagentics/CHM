@@ -16,13 +16,14 @@ Initial apply on 2026-08-26; warm-instance update on 2026-08-27; Explorer,
 alerting, Cloud SQL deletion-protection, and Explorer IAP JWT validation updates
 on 2026-08-28; review UI/API, CHM-to-internal-API VPC fix, and public/admin
 Explorer path split on 2026-08-31; Explorer language migration rollout on
-2026-09-01; CHM Explorer write proxy removed locally for the next deployment:
+2026-09-01; direct bearer-token Explorer record API deployed on 2026-09-03:
 
 - Project: `chm-network`
 - Region: `us-east4`
 - Cloud Run service: `chm`
-- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:1e41b1d4ae72588f00fe82220ae71c70cd25f377cad3dd7a9c5f3f200b714caa`
-- CHM Cloud Run revision: `chm-00012-8h7`
+- Source commit: `07dd201`
+- Image: `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a02418369050dfb52f5eba561df32628f6116ddc9c6f1a002d31ba7582c2c90e`
+- CHM Cloud Run revision: `chm-00013-lvp`
 - Scaling: 1 minimum instance, 3 maximum instances
 - Cloud Run deletion protection: enabled
 - CHM Direct VPC egress: default `us-east4` subnet, `all-traffic`
@@ -31,13 +32,14 @@ Explorer path split on 2026-08-31; Explorer language migration rollout on
 - Cloud SQL deletion protection: Terraform and Cloud SQL platform flag enabled
 - Cloud Build service account: `chm-build-sa@chm-network.iam.gserviceaccount.com`
 - Explorer Cloud Run services: public `explorer`, IAP-protected
-  `explorer-admin`, and private `explorer-api`
-- Explorer source commit: `226fc2c`
-- Explorer public Cloud Run revision: `explorer-00015-dc9`
-- Explorer admin Cloud Run revision: `explorer-admin-00005-p9k`
-- Explorer API Cloud Run revision: `explorer-api-00014-jb8`
-- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:9742be1c20233a44f4fd235132aa414fa1488bd198562ce396f2c311633e109c`
-- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:f9e46cb5da233cb3becaf014ffc3ba3bb15a94363e05d756b4a3da4a66f19d84`
+  `explorer-admin`, and bearer-token `explorer-api`
+- Explorer source commit: `d6b6992`
+- Explorer public Cloud Run revision: `explorer-00018-7qw`
+- Explorer admin Cloud Run revision: `explorer-admin-00008-qz9`
+- Explorer API Cloud Run revision: `explorer-api-00016-bpt`
+- Explorer public image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:25e761049522571b0f0fb0521830c54418b8d12dca5ee91a9842d200bfe40ab5`
+- Explorer admin image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:09c40f273c50c00d13b9a30ec1109a16da224b3729a054b22b0ec01b5a56d07f`
+- Explorer API image: `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:0f6c8ae7c27e8d97964c571d40b418d04722afdd5e0364757424956e747a6c6e`
 - Explorer Cloud Build service account: `explorer-build-sa@chm-network.iam.gserviceaccount.com`
 - Cloud SQL instance: `chm`, database `explorer`
 - CHM IAP JWT audience: `/projects/288836337031/global/backendServices/1981640158971360804`
@@ -57,24 +59,27 @@ Explorer path split on 2026-08-31; Explorer language migration rollout on
 - Unmanaged Explorer Cloud Run setup/check/migration jobs: deleted after launch
   setup and verification completed
 
-Terraform reported no drift on 2026-09-01 with the currently deployed image
-digests:
+Terraform applied the direct Explorer record API routing on 2026-09-03 with
+these image digests:
 
 ```sh
 cd /Users/danvallentyne/dev/oceanagentics/CHM/infra
 terraform plan \
-  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:1e41b1d4ae72588f00fe82220ae71c70cd25f377cad3dd7a9c5f3f200b714caa \
+  -var chm_image=us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a02418369050dfb52f5eba561df32628f6116ddc9c6f1a002d31ba7582c2c90e \
   -var 'chm_admin_hint_emails=["danny@oceanagentics.com"]' \
   -var enable_explorer=true \
-  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:9742be1c20233a44f4fd235132aa414fa1488bd198562ce396f2c311633e109c \
-  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:f9e46cb5da233cb3becaf014ffc3ba3bb15a94363e05d756b4a3da4a66f19d84 \
+  -var explorer_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:25e761049522571b0f0fb0521830c54418b8d12dca5ee91a9842d200bfe40ab5 \
+  -var explorer_admin_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:09c40f273c50c00d13b9a30ec1109a16da224b3729a054b22b0ec01b5a56d07f \
+  -var explorer_api_image=us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:0f6c8ae7c27e8d97964c571d40b418d04722afdd5e0364757424956e747a6c6e \
   -var explorer_admin_iap_backend_service_id=5570063593656309274
 ```
 
 Public DNS now points both CHM hostnames at the load balancer. Unauthenticated
 HTTPS requests to `/` and `/explorer/admin` should go to the Google IAP login
 flow. Unauthenticated `/explorer` should serve the public read-only Explorer
-view.
+view. Unauthenticated `/api/records` should return JSON
+`401 missing_bearer_token`; invalid bearer tokens should return
+`403 invalid_bearer_token`.
 
 ## Routine Fast App Deploy
 

@@ -13,11 +13,13 @@ Explorer, currently developed in the Ryu repo, remains the graph application and
 The first CHM slice was deployed on 2026-08-26. The Explorer infrastructure
 slice was applied on 2026-08-28. The review UI/API and CHM-to-internal-API VPC
 fix and the public/admin Explorer path split were deployed on 2026-08-31. The
-live services now have IAP JWT validation on protected routes, database role
-separation, private API caller restrictions, public read-only Explorer graph
-loading, and a backend-verified narrow review write path. Explorer shows record
-depth and review state to all users, and exposes an authenticated/author review
-form for review state and reviewer note updates at `/explorer/admin`.
+direct bearer-token Explorer record API was deployed on 2026-09-03. The live
+services now have IAP JWT validation on protected routes, database role
+separation, public read-only Explorer graph loading, IAP-protected Explorer
+admin writes, and bearer-token agent reads/writes at `/api/records`. Explorer
+shows record depth and review state to all users, and exposes an
+authenticated/author review form for review state and reviewer note updates at
+`/explorer/admin`.
 
 - Cloud Run service `chm` is deployed in `us-east4`.
 - Terraform state is stored in `gs://chm-network-tfstate-288836337031/chm`.
@@ -28,19 +30,27 @@ form for review state and reviewer note updates at `/explorer/admin`.
 - Public HTTPS requests to `/` and `/explorer/admin` reach Google IAP.
 - `/explorer` routing is public read-only when Terraform is applied with
   `enable_explorer=true`.
-- Terraform includes the Explorer slice: shared Cloud SQL `chm`, database `explorer`, Explorer service accounts, generated database-password secrets, public Cloud Run `explorer`, IAP-protected Cloud Run `explorer-admin`, optional private `explorer-api`, `/explorer` and `/explorer/admin` URL-map routing, and CHM Direct VPC egress for the private API call path.
-- Current CHM deployment: Cloud Run revision `chm-00011-gf8`, image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:163707f86945c620d99b2e709dc2bb883b9fe8f89102764fe27c77065f18c4bc`.
-- Current Explorer deployment: Ryu commit `4198b8c`, public revision
-  `explorer-00014-hwg`, admin revision `explorer-admin-00004-rxr`, private API
-  revision `explorer-api-00013-rwh`, public image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:16f866c2170bd91b53784c995eec2eeee2d71d2910aae5b2e7d2580d60bd8742`, and admin image
-  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:9bdeddb6a704a80b91cbd80289e255616a2504732235ce2f07cc4c9e37c4d98e`.
+- Terraform includes the Explorer slice: shared Cloud SQL `chm`, database
+  `explorer`, Explorer service accounts, generated database-password secrets,
+  public Cloud Run `explorer`, IAP-protected Cloud Run `explorer-admin`,
+  bearer-token Cloud Run `explorer-api`, and `/explorer`, `/explorer/admin`,
+  and `/api/records` URL-map routing.
+- Current CHM deployment: CHM commit `07dd201`, Cloud Run revision
+  `chm-00013-lvp`, image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/chm@sha256:a02418369050dfb52f5eba561df32628f6116ddc9c6f1a002d31ba7582c2c90e`.
+- Current Explorer deployment: Ryu commit `d6b6992`, public revision
+  `explorer-00018-7qw`, admin revision `explorer-admin-00008-qz9`, API
+  revision `explorer-api-00016-bpt`, public image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-public@sha256:25e761049522571b0f0fb0521830c54418b8d12dca5ee91a9842d200bfe40ab5`,
+  admin image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-admin@sha256:09c40f273c50c00d13b9a30ec1109a16da224b3729a054b22b0ec01b5a56d07f`,
+  and API image
+  `us-east4-docker.pkg.dev/chm-network/chm-apps/explorer-api@sha256:0f6c8ae7c27e8d97964c571d40b418d04722afdd5e0364757424956e747a6c6e`.
 - Authenticated browser verification confirmed Explorer loads real graph data.
-- A temporary Cloud Run probe running as `chm-sa` verified the private review API
-  can update `fishbase` as `danny@oceanagentics.com` and rejects extra fields,
-  missing user context, wrong caller headers, and the absent general node write
-  route.
+- Live `/api/records` smoke on 2026-09-03 verified unauthenticated
+  `401 missing_bearer_token`, invalid bearer `403 invalid_bearer_token`,
+  writer-token read `200`, `validateOnly` write preflight `200`, and a
+  throwaway record create/delete cycle with final cleanup.
 - Unmanaged Explorer Cloud Run setup/check jobs were deleted after launch
   setup and verification.
 
@@ -52,7 +62,8 @@ Use one shared domain with path routing:
 - `https://chm.oceanagentics.org/login` routes to CHM and should trigger or forward to the IAP login flow, not implement a separate CHM password screen.
 - `https://chm.oceanagentics.org/explorer` routes to public read-only Explorer.
 - `https://chm.oceanagentics.org/explorer/admin` routes to IAP-protected Explorer admin.
-- `https://chm.oceanagentics.com/`, `/login`, `/explorer`, and `/explorer/admin` route to the same CHM-managed load balancer and explicit app backends.
+- `https://chm.oceanagentics.org/api/records` routes to Explorer API and requires a Ryu bearer token.
+- `https://chm.oceanagentics.com/`, `/login`, `/explorer`, `/explorer/admin`, and `/api/records` route to the same CHM-managed load balancer and explicit app backends.
 - Future CHM apps use their own path prefixes, for example `/otherapp1` and `/otherapp2`.
 
 `/` and `/login` are IAP-protected. The first implementation should treat IAP as the shared Google login boundary and avoid building a separate user-auth system.
